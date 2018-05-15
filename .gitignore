@@ -4,7 +4,7 @@ terraform.tfstate
 terraform.tfstate.backup
 privatekey.pem
 .terraform
-
+icp-ce/logs/*.*
 
 
 # For mac users
