@@ -1,0 +1,12 @@
+# Leave behind terrarform execution artifacts
+terraform.tfvars
+terraform.tfstate
+terraform.tfstate.backup
+privatekey.pem
+.terraform
+
+
+
+# For mac users
+.history
+.DS_Store

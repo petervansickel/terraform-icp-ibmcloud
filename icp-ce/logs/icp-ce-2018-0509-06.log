@@ -1,0 +1,338 @@
+[0m[1mRefreshing Terraform state in-memory prior to plan...[0m
+The refreshed state will be used to calculate this plan, but will not be
+persisted to local or remote state storage.
+[0m
+[0m[1mdata.ibm_compute_ssh_key.public_key: Refreshing state...[0m
+
+------------------------------------------------------------------------
+
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
+  [32m+[0m create
+[0m
+Terraform will perform the following actions:
+
+[32m  [32m+[0m [32mibm_compute_vm_instance.icp-boot
+[0m      id:                           <computed>
+      block_storage_ids.#:          <computed>
+      cores:                        "2"
+      datacenter:                   "wdc01"
+      disks.#:                      <computed>
+      domain:                       "pvs01.local"
+      file_storage_ids.#:           <computed>
+      hostname:                     "pvs01-boot"
+      hourly_billing:               "true"
+      ip_address_id:                <computed>
+      ip_address_id_private:        <computed>
+      ipv4_address:                 <computed>
+      ipv4_address_private:         <computed>
+      ipv6_address:                 <computed>
+      ipv6_address_id:              <computed>
+      ipv6_enabled:                 "true"
+      ipv6_static_enabled:          "false"
+      local_disk:                   "false"
+      memory:                       "8192"
+      network_speed:                "1000"
+      notes:                        "Boot machine for ICP deployment"
+      os_reference_code:            "CENTOS_7_64"
+      private_interface_id:         <computed>
+      private_network_only:         "false"
+      private_security_group_ids.#: <computed>
+      private_subnet:               <computed>
+      private_subnet_id:            <computed>
+      private_vlan_id:              <computed>
+      public_bandwidth_limited:     <computed>
+      public_bandwidth_unlimited:   "false"
+      public_interface_id:          <computed>
+      public_ipv6_subnet:           <computed>
+      public_ipv6_subnet_id:        <computed>
+      public_security_group_ids.#:  <computed>
+      public_subnet:                <computed>
+      public_subnet_id:             <computed>
+      public_vlan_id:               <computed>
+      secondary_ip_addresses.#:     <computed>
+      secondary_ip_count:           "4"
+      tags.#:                       "2"
+      tags.2844461138:              "pvs01"
+      tags.3562493167:              "ICP-Boot"
+      wait_time_minutes:            "90"
+[0m
+[0m[32m  [32m+[0m [32mibm_compute_vm_instance.icp-master
+[0m      id:                           <computed>
+      block_storage_ids.#:          <computed>
+      cores:                        "4"
+      datacenter:                   "wdc01"
+      disks.#:                      <computed>
+      domain:                       "pvs01.local"
+      file_storage_ids.#:           <computed>
+      hostname:                     "pvs01-master1"
+      hourly_billing:               "true"
+      ip_address_id:                <computed>
+      ip_address_id_private:        <computed>
+      ipv4_address:                 <computed>
+      ipv4_address_private:         <computed>
+      ipv6_address:                 <computed>
+      ipv6_address_id:              <computed>
+      ipv6_enabled:                 "true"
+      ipv6_static_enabled:          "false"
+      local_disk:                   "false"
+      memory:                       "16384"
+      network_speed:                "1000"
+      notes:                        "Master node for ICP deployment"
+      os_reference_code:            "CENTOS_7_64"
+      private_interface_id:         <computed>
+      private_network_only:         "false"
+      private_security_group_ids.#: <computed>
+      private_subnet:               <computed>
+      private_subnet_id:            <computed>
+      private_vlan_id:              <computed>
+      public_bandwidth_limited:     <computed>
+      public_bandwidth_unlimited:   "false"
+      public_interface_id:          <computed>
+      public_ipv6_subnet:           <computed>
+      public_ipv6_subnet_id:        <computed>
+      public_security_group_ids.#:  <computed>
+      public_subnet:                <computed>
+      public_subnet_id:             <computed>
+      public_vlan_id:               <computed>
+      secondary_ip_addresses.#:     <computed>
+      secondary_ip_count:           "4"
+      tags.#:                       "2"
+      tags.101832455:               "ICP-Master"
+      tags.2844461138:              "pvs01"
+      wait_time_minutes:            "90"
+[0m
+[0m[32m  [32m+[0m [32mibm_compute_vm_instance.icp-mgmt
+[0m      id:                           <computed>
+      block_storage_ids.#:          <computed>
+      cores:                        "4"
+      datacenter:                   "wdc01"
+      disks.#:                      <computed>
+      domain:                       "pvs01.local"
+      file_storage_ids.#:           <computed>
+      hostname:                     "pvs01-mgmt1"
+      hourly_billing:               "true"
+      ip_address_id:                <computed>
+      ip_address_id_private:        <computed>
+      ipv4_address:                 <computed>
+      ipv4_address_private:         <computed>
+      ipv6_address:                 <computed>
+      ipv6_address_id:              <computed>
+      ipv6_enabled:                 "true"
+      ipv6_static_enabled:          "false"
+      local_disk:                   "false"
+      memory:                       "16384"
+      network_speed:                "1000"
+      notes:                        "Management node for ICP deployment"
+      os_reference_code:            "CENTOS_7_64"
+      private_interface_id:         <computed>
+      private_network_only:         "false"
+      private_security_group_ids.#: <computed>
+      private_subnet:               <computed>
+      private_subnet_id:            <computed>
+      private_vlan_id:              <computed>
+      public_bandwidth_limited:     <computed>
+      public_bandwidth_unlimited:   "false"
+      public_interface_id:          <computed>
+      public_ipv6_subnet:           <computed>
+      public_ipv6_subnet_id:        <computed>
+      public_security_group_ids.#:  <computed>
+      public_subnet:                <computed>
+      public_subnet_id:             <computed>
+      public_vlan_id:               <computed>
+      secondary_ip_addresses.#:     <computed>
+      secondary_ip_count:           "4"
+      tags.#:                       "2"
+      tags.2844461138:              "pvs01"
+      tags.3908692518:              "ICP-Management"
+      wait_time_minutes:            "90"
+[0m
+[0m[32m  [32m+[0m [32mibm_compute_vm_instance.icp-proxy
+[0m      id:                           <computed>
+      block_storage_ids.#:          <computed>
+      cores:                        "2"
+      datacenter:                   "wdc01"
+      disks.#:                      <computed>
+      domain:                       "pvs01.local"
+      file_storage_ids.#:           <computed>
+      hostname:                     "pvs01-proxy1"
+      hourly_billing:               "true"
+      ip_address_id:                <computed>
+      ip_address_id_private:        <computed>
+      ipv4_address:                 <computed>
+      ipv4_address_private:         <computed>
+      ipv6_address:                 <computed>
+      ipv6_address_id:              <computed>
+      ipv6_enabled:                 "true"
+      ipv6_static_enabled:          "false"
+      local_disk:                   "true"
+      memory:                       "8192"
+      network_speed:                "1000"
+      notes:                        "Proxy node for ICP deployment"
+      os_reference_code:            "CENTOS_7_64"
+      private_interface_id:         <computed>
+      private_network_only:         "false"
+      private_security_group_ids.#: <computed>
+      private_subnet:               <computed>
+      private_subnet_id:            <computed>
+      private_vlan_id:              <computed>
+      public_bandwidth_limited:     <computed>
+      public_bandwidth_unlimited:   "false"
+      public_interface_id:          <computed>
+      public_ipv6_subnet:           <computed>
+      public_ipv6_subnet_id:        <computed>
+      public_security_group_ids.#:  <computed>
+      public_subnet:                <computed>
+      public_subnet_id:             <computed>
+      public_vlan_id:               <computed>
+      secondary_ip_addresses.#:     <computed>
+      secondary_ip_count:           "4"
+      tags.#:                       "2"
+      tags.2844461138:              "pvs01"
+      tags.3747383812:              "ICP-Proxy"
+      wait_time_minutes:            "90"
+[0m
+[0m[32m  [32m+[0m [32mibm_compute_vm_instance.icp-worker[0]
+[0m      id:                           <computed>
+      block_storage_ids.#:          <computed>
+      cores:                        "4"
+      datacenter:                   "wdc01"
+      disks.#:                      <computed>
+      domain:                       "pvs01.local"
+      file_storage_ids.#:           <computed>
+      hostname:                     "pvs01-worker1"
+      hourly_billing:               "true"
+      ip_address_id:                <computed>
+      ip_address_id_private:        <computed>
+      ipv4_address:                 <computed>
+      ipv4_address_private:         <computed>
+      ipv6_address:                 <computed>
+      ipv6_address_id:              <computed>
+      ipv6_enabled:                 "true"
+      ipv6_static_enabled:          "false"
+      local_disk:                   "true"
+      memory:                       "16384"
+      network_speed:                "1000"
+      notes:                        "Worker node for ICP deployment"
+      os_reference_code:            "CENTOS_7_64"
+      private_interface_id:         <computed>
+      private_network_only:         "false"
+      private_security_group_ids.#: <computed>
+      private_subnet:               <computed>
+      private_subnet_id:            <computed>
+      private_vlan_id:              <computed>
+      public_bandwidth_limited:     <computed>
+      public_bandwidth_unlimited:   "false"
+      public_interface_id:          <computed>
+      public_ipv6_subnet:           <computed>
+      public_ipv6_subnet_id:        <computed>
+      public_security_group_ids.#:  <computed>
+      public_subnet:                <computed>
+      public_subnet_id:             <computed>
+      public_vlan_id:               <computed>
+      secondary_ip_addresses.#:     <computed>
+      secondary_ip_count:           "4"
+      tags.#:                       "2"
+      tags.2844461138:              "pvs01"
+      tags.3031092147:              "ICP-Worker"
+      wait_time_minutes:            "90"
+[0m
+[0m[32m  [32m+[0m [32mibm_compute_vm_instance.icp-worker[1]
+[0m      id:                           <computed>
+      block_storage_ids.#:          <computed>
+      cores:                        "4"
+      datacenter:                   "wdc01"
+      disks.#:                      <computed>
+      domain:                       "pvs01.local"
+      file_storage_ids.#:           <computed>
+      hostname:                     "pvs01-worker2"
+      hourly_billing:               "true"
+      ip_address_id:                <computed>
+      ip_address_id_private:        <computed>
+      ipv4_address:                 <computed>
+      ipv4_address_private:         <computed>
+      ipv6_address:                 <computed>
+      ipv6_address_id:              <computed>
+      ipv6_enabled:                 "true"
+      ipv6_static_enabled:          "false"
+      local_disk:                   "true"
+      memory:                       "16384"
+      network_speed:                "1000"
+      notes:                        "Worker node for ICP deployment"
+      os_reference_code:            "CENTOS_7_64"
+      private_interface_id:         <computed>
+      private_network_only:         "false"
+      private_security_group_ids.#: <computed>
+      private_subnet:               <computed>
+      private_subnet_id:            <computed>
+      private_vlan_id:              <computed>
+      public_bandwidth_limited:     <computed>
+      public_bandwidth_unlimited:   "false"
+      public_interface_id:          <computed>
+      public_ipv6_subnet:           <computed>
+      public_ipv6_subnet_id:        <computed>
+      public_security_group_ids.#:  <computed>
+      public_subnet:                <computed>
+      public_subnet_id:             <computed>
+      public_vlan_id:               <computed>
+      secondary_ip_addresses.#:     <computed>
+      secondary_ip_count:           "4"
+      tags.#:                       "2"
+      tags.2844461138:              "pvs01"
+      tags.3031092147:              "ICP-Worker"
+      wait_time_minutes:            "90"
+[0m
+[0m[32m  [32m+[0m [32mibm_compute_vm_instance.icp-worker[2]
+[0m      id:                           <computed>
+      block_storage_ids.#:          <computed>
+      cores:                        "4"
+      datacenter:                   "wdc01"
+      disks.#:                      <computed>
+      domain:                       "pvs01.local"
+      file_storage_ids.#:           <computed>
+      hostname:                     "pvs01-worker3"
+      hourly_billing:               "true"
+      ip_address_id:                <computed>
+      ip_address_id_private:        <computed>
+      ipv4_address:                 <computed>
+      ipv4_address_private:         <computed>
+      ipv6_address:                 <computed>
+      ipv6_address_id:              <computed>
+      ipv6_enabled:                 "true"
+      ipv6_static_enabled:          "false"
+      local_disk:                   "true"
+      memory:                       "16384"
+      network_speed:                "1000"
+      notes:                        "Worker node for ICP deployment"
+      os_reference_code:            "CENTOS_7_64"
+      private_interface_id:         <computed>
+      private_network_only:         "false"
+      private_security_group_ids.#: <computed>
+      private_subnet:               <computed>
+      private_subnet_id:            <computed>
+      private_vlan_id:              <computed>
+      public_bandwidth_limited:     <computed>
+      public_bandwidth_unlimited:   "false"
+      public_interface_id:          <computed>
+      public_ipv6_subnet:           <computed>
+      public_ipv6_subnet_id:        <computed>
+      public_security_group_ids.#:  <computed>
+      public_subnet:                <computed>
+      public_subnet_id:             <computed>
+      public_vlan_id:               <computed>
+      secondary_ip_addresses.#:     <computed>
+      secondary_ip_count:           "4"
+      tags.#:                       "2"
+      tags.2844461138:              "pvs01"
+      tags.3031092147:              "ICP-Worker"
+      wait_time_minutes:            "90"
+[0m
+[0m
+[0m[1mPlan:[0m 7 to add, 0 to change, 0 to destroy.[0m
+
+------------------------------------------------------------------------
+
+Note: You didn't specify an "-out" parameter to save this plan, so Terraform
+can't guarantee that exactly these actions will be performed if
+"terraform apply" is subsequently run.
+

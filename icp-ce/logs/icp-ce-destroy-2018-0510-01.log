@@ -1,0 +1,99 @@
+[0m[1mrandom_id.adminpassword: Refreshing state... (ID: PaOnsg)[0m
+[0m[1mtls_private_key.icpkey: Refreshing state... (ID: a4edab22c6136710f3841408bde0bea3bedfd3d6)[0m
+[0m[1mdata.ibm_compute_ssh_key.public_key: Refreshing state...[0m
+[0m[1mibm_compute_vm_instance.icp-proxy: Refreshing state... (ID: 54477683)[0m
+[0m[1mibm_compute_vm_instance.icp-boot: Refreshing state... (ID: 54477663)[0m
+[0m[1mibm_compute_vm_instance.icp-master: Refreshing state... (ID: 54477665)[0m
+[0m[1mibm_compute_vm_instance.icp-mgmt: Refreshing state... (ID: 54477669)[0m
+[0m[1mibm_compute_vm_instance.icp-worker[1]: Refreshing state... (ID: 54477667)[0m
+[0m[1mibm_compute_vm_instance.icp-worker[0]: Refreshing state... (ID: 54477675)[0m
+[0m[1mnull_resource.icp-cluster[2]: Refreshing state... (ID: 712262363654751994)[0m
+[0m[1mnull_resource.icp-cluster[0]: Refreshing state... (ID: 8348265900808638607)[0m
+[0m[1mnull_resource.icp-cluster[5]: Refreshing state... (ID: 4183527515557398791)[0m
+[0m[1mnull_resource.icp-cluster[3]: Refreshing state... (ID: 5717314600410350129)[0m
+[0m[1mnull_resource.icp-cluster[1]: Refreshing state... (ID: 6966390876287860217)[0m
+[0m[1mnull_resource.icp-cluster[4]: Refreshing state... (ID: 8338270426363004473)[0m
+[0m[1mnull_resource.icp-boot: Refreshing state... (ID: 8809512195090376432)[0m
+
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
+  [31m-[0m destroy
+[0m
+Terraform will perform the following actions:
+
+[31m  [31m-[0m [31mibm_compute_vm_instance.icp-boot
+[0m[0m
+[0m[31m  [31m-[0m [31mibm_compute_vm_instance.icp-master
+[0m[0m
+[0m[31m  [31m-[0m [31mibm_compute_vm_instance.icp-mgmt
+[0m[0m
+[0m[31m  [31m-[0m [31mibm_compute_vm_instance.icp-proxy
+[0m[0m
+[0m[31m  [31m-[0m [31mibm_compute_vm_instance.icp-worker[0]
+[0m[0m
+[0m[31m  [31m-[0m [31mibm_compute_vm_instance.icp-worker[1]
+[0m[0m
+[0m[31m  [31m-[0m [31mrandom_id.adminpassword
+[0m[0m
+[0m[31m  [31m-[0m [31mmodule.icpprovision.null_resource.icp-boot
+[0m[0m
+[0m[31m  [31m-[0m [31mmodule.icpprovision.null_resource.icp-cluster[0]
+[0m[0m
+[0m[31m  [31m-[0m [31mmodule.icpprovision.null_resource.icp-cluster[1]
+[0m[0m
+[0m[31m  [31m-[0m [31mmodule.icpprovision.null_resource.icp-cluster[2]
+[0m[0m
+[0m[31m  [31m-[0m [31mmodule.icpprovision.null_resource.icp-cluster[3]
+[0m[0m
+[0m[31m  [31m-[0m [31mmodule.icpprovision.null_resource.icp-cluster[4]
+[0m[0m
+[0m[31m  [31m-[0m [31mmodule.icpprovision.null_resource.icp-cluster[5]
+[0m[0m
+[0m[31m  [31m-[0m [31mmodule.icpprovision.tls_private_key.icpkey
+[0m[0m
+[0m
+[0m[1mPlan:[0m 0 to add, 0 to change, 15 to destroy.[0m
+
+[0m[1mDo you really want to destroy?[0m
+  Terraform will destroy all your managed infrastructure, as shown above.
+  There is no undo. Only 'yes' will be accepted to confirm.
+
+  [1mEnter a value:[0m [0m
+[0m[1mmodule.icpprovision.null_resource.icp-boot: Destroying... (ID: 8809512195090376432)[0m[0m
+[0m[1mibm_compute_vm_instance.icp-boot: Destroying... (ID: 54477663)[0m[0m
+[0m[1mibm_compute_vm_instance.icp-mgmt: Destroying... (ID: 54477669)[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-boot: Destruction complete after 0s[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[1]: Destroying... (ID: 6966390876287860217)[0m[0m
+[0m[1mrandom_id.adminpassword: Destroying... (ID: PaOnsg)[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[4]: Destroying... (ID: 8338270426363004473)[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[2]: Destroying... (ID: 712262363654751994)[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[0]: Destroying... (ID: 8348265900808638607)[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[3]: Destroying... (ID: 5717314600410350129)[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[1]: Destruction complete after 0s[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[5]: Destroying... (ID: 4183527515557398791)[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[0]: Destruction complete after 0s[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[2]: Destruction complete after 0s[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[5]: Destruction complete after 0s[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[4]: Destruction complete after 0s[0m[0m
+[0m[1mmodule.icpprovision.null_resource.icp-cluster[3]: Destruction complete after 0s[0m[0m
+[0m[1mrandom_id.adminpassword: Destruction complete after 0s[0m[0m
+[0m[1mibm_compute_vm_instance.icp-worker[1]: Destroying... (ID: 54477667)[0m[0m
+[0m[1mibm_compute_vm_instance.icp-proxy: Destroying... (ID: 54477683)[0m[0m
+[0m[1mmodule.icpprovision.tls_private_key.icpkey: Destroying... (ID: a4edab22c6136710f3841408bde0bea3bedfd3d6)[0m[0m
+[0m[1mibm_compute_vm_instance.icp-worker[0]: Destroying... (ID: 54477675)[0m[0m
+[0m[1mibm_compute_vm_instance.icp-master: Destroying... (ID: 54477665)[0m[0m
+[0m[1mmodule.icpprovision.tls_private_key.icpkey: Destruction complete after 0s[0m[0m
+[0m[1mibm_compute_vm_instance.icp-mgmt: Still destroying... (ID: 54477669, 10s elapsed)[0m[0m
+[0m[1mibm_compute_vm_instance.icp-boot: Still destroying... (ID: 54477663, 10s elapsed)[0m[0m
+[0m[1mibm_compute_vm_instance.icp-worker.1: Still destroying... (ID: 54477667, 10s elapsed)[0m[0m
+[0m[1mibm_compute_vm_instance.icp-worker.0: Still destroying... (ID: 54477675, 10s elapsed)[0m[0m
+[0m[1mibm_compute_vm_instance.icp-proxy: Still destroying... (ID: 54477683, 10s elapsed)[0m[0m
+[0m[1mibm_compute_vm_instance.icp-master: Still destroying... (ID: 54477665, 10s elapsed)[0m[0m
+[0m[1mibm_compute_vm_instance.icp-worker[1]: Destruction complete after 13s[0m[0m
+[0m[1mibm_compute_vm_instance.icp-boot: Destruction complete after 13s[0m[0m
+[0m[1mibm_compute_vm_instance.icp-mgmt: Destruction complete after 13s[0m[0m
+[0m[1mibm_compute_vm_instance.icp-proxy: Destruction complete after 13s[0m[0m
+[0m[1mibm_compute_vm_instance.icp-worker[0]: Destruction complete after 13s[0m[0m
+[0m[1mibm_compute_vm_instance.icp-master: Destruction complete after 13s[0m[0m
+[0m[1m[32m
+Destroy complete! Resources: 15 destroyed.[0m
