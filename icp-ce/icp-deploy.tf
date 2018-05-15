@@ -5,13 +5,13 @@ module "icpprovision" {
     source = "github.com/ibm-cloud-architecture/terraform-module-icp-deploy.git?ref=2.2.1"
 
     # Provide IP addresses for boot, master, mgmt, va, proxy and workers
-    boot-node = "${var.boot["nodes"] == 0 ? ibm_compute_vm_instance.icp-master.0.defaut_ip_address :  ibm_compute_vm_instance.icp-boot.default_ip_address }"
+    boot-node = "${var.boot["nodes"] == 0 ? ibm_compute_vm_instance.icp-master.0.ipv4_address_private :  ibm_compute_vm_instance.icp-boot.ipv4_address_private }"
     icp-host-groups = {
-        master = ["${ibm_compute_vm_instance.icp-master.*.default_ip_address}"]
-        proxy = ["${ibm_compute_vm_instance.icp-proxy.*.default_ip_address}"]
-        worker = ["${ibm_compute_vm_instance.icp-worker.*.default_ip_address}"]
-        mgmt = ["${ibm_compute_vm_instance.icp-mgmt.*.default_ip_address}"]
-        va = ["${ibm_compute_vm_instance.icp-va.*.default_ip_address}"]
+        master = ["${ibm_compute_vm_instance.icp-master.*.ipv4_address_private}"]
+        proxy = ["${ibm_compute_vm_instance.icp-proxy.*.ipv4_address_private}"]
+        worker = ["${ibm_compute_vm_instance.icp-worker.*.ipv4_address_private}"]
+        mgmt = ["${ibm_compute_vm_instance.icp-mgmt.*.ipv4_address_private}"]
+        va = ["${ibm_compute_vm_instance.icp-va.*.ipv4_address_private}"]
     }
 
     # Provide desired ICP version to provision
