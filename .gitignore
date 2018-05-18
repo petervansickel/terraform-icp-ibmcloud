@@ -1,10 +1,7 @@
 # Leave behind terrarform execution artifacts
-terraform.tfvars
-terraform.tfstate
-terraform.tfstate.backup
 privatekey.pem
 .terraform
-icp-ce/logs/*.*
+logs/*.*
 
 
 # For mac users
