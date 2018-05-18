@@ -10,8 +10,7 @@ locals {
 ### Deploy ICP to cluster
 ##################################
 module "icpprovision" {
-    #source = "github.com/ibm-cloud-architecture/terraform-module-icp-deploy.git?ref=2.2.1"
-    source = "../terraform-module-icp-deploy"
+    source = "github.com/jkwong888/terraform-module-icp-deploy.git"
 
     # Provide IP addresses for boot, master, mgmt, va, proxy and workers
     boot-node = "${ibm_compute_vm_instance.icp-boot.ipv4_address_private}"
