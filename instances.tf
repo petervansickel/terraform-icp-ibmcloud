@@ -57,49 +57,49 @@ locals {
 
 # Generate a random string in case user wants us to generate admin password
 resource "random_id" "adminpassword" {
-  byte_length = "4"
+  byte_length = "16"
 }
 
 resource "ibm_compute_vm_instance" "icp-boot" {
-    hostname = "${var.deployment}-boot"
-    domain = "${var.domain}"
-    os_reference_code = "${var.os_reference_code}"
-    datacenter = "${var.datacenter}"
+  hostname = "${var.deployment}-boot-${random_id.clusterid.hex}"
+  domain = "${var.domain}"
+  os_reference_code = "${var.os_reference_code}"
+  datacenter = "${var.datacenter}"
 
-    cores = "${var.boot["cpu_cores"]}"
-    memory = "${var.boot["memory"]}"
+  cores = "${var.boot["cpu_cores"]}"
+  memory = "${var.boot["memory"]}"
 
-    network_speed = "${var.boot["network_speed"]}"
+  network_speed = "${var.boot["network_speed"]}"
 
-    local_disk = "${var.boot["local_disk"]}"
-    disks = [
-      "${var.boot["disk_size"]}",
-      "${var.boot["docker_vol_size"]}"
-    ]
+  local_disk = "${var.boot["local_disk"]}"
+  disks = [
+    "${var.boot["disk_size"]}",
+    "${var.boot["docker_vol_size"]}"
+  ]
 
-    tags = [
-      "${var.deployment}",
-      "icp-boot",
-      "${random_id.clusterid.hex}"
-    ]
+  tags = [
+    "${var.deployment}",
+    "icp-boot",
+    "${random_id.clusterid.hex}"
+  ]
 
-    hourly_billing = "${var.boot["hourly_billing"]}"
-    private_network_only = "${var.boot["private_network_only"]}"
+  hourly_billing = "${var.boot["hourly_billing"]}"
+  private_network_only = "${var.boot["private_network_only"]}"
 
-    public_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}",
-      "${ibm_security_group.boot_node_public.id}"
-    ]
+  public_security_group_ids = [
+    "${ibm_security_group.cluster_public.id}",
+    "${ibm_security_group.boot_node_public.id}"
+  ]
 
-    private_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}"
-    ]
+  private_security_group_ids = [
+    "${ibm_security_group.cluster_private.id}"
+  ]
 
-    # Permit an ssh loging for the key owner.
-    # You an have multiple keys defined.
-    ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  # Permit an ssh loging for the key owner.
+  # You an have multiple keys defined.
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
 
-    user_metadata = <<EOF
+  user_metadata = <<EOF
 #cloud-config
 packages:
   - unzip
@@ -134,75 +134,82 @@ runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
 EOF
 
-    notes = "Boot machine for ICP deployment"
+  notes = "Boot machine for ICP deployment"
+}
 
-    provisioner "file" {
-      connection {
-        user          = "icpdeploy"
-        private_key   = "${tls_private_key.installkey.private_key_pem}"
-        bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
-      }
+resource "null_resource" "image_load" {
+  count = "${var.image_location != "" ? 1 : 0}"
 
-      source = "${var.image_location != "" ? var.image_location : "${path.module}/icp-install/README.md"}"
-      destination = "/tmp/${basename(var.image_location)}"
+  provisioner "file" {
+    connection {
+      host          = "${ibm_compute_vm_instance.icp-boot.ipv4_address_private}"
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
 
-    # wait until cloud-init finishes, then load images into a local registry
-    provisioner "remote-exec" {
-      connection {
-        user          = "icpdeploy"
-        private_key   = "${tls_private_key.installkey.private_key_pem}"
-        bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
-      }
+    source = "${var.image_location}"
+    destination = "/tmp/${basename(var.image_location)}"
+  }
 
-      inline = [
-        "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done",
-        "${var.image_location != "" ? "/opt/ibm/scripts/load_image.sh -p /tmp/${basename(var.image_location)} -r ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}" : "/bin/true" }"
-      ]
+  # wait until cloud-init finishes, then load images into a local registry
+  provisioner "remote-exec" {
+    connection {
+      host          = "${ibm_compute_vm_instance.icp-boot.ipv4_address_private}"
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
+
+    inline = [
+      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done",
+      "/opt/ibm/scripts/load_image.sh -p /tmp/${basename(var.image_location)} -r ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}"
+    ]
+  }
 }
 
 resource "ibm_compute_vm_instance" "icp-master" {
-    count = "${var.master["nodes"]}"
+  depends_on = ["null_resource.image_load"]
+  count = "${var.master["nodes"]}"
 
-    hostname = "${format("${lower(var.deployment)}-master%02d", count.index + 1) }"
-    domain = "${var.domain}"
+  hostname = "${format("${lower(var.deployment)}-master%02d-${random_id.clusterid.hex}", count.index + 1) }"
+  domain = "${var.domain}"
 
-    os_reference_code = "${var.os_reference_code}"
+  os_reference_code = "${var.os_reference_code}"
 
-    datacenter = "${var.datacenter}"
-    cores = "${var.master["cpu_cores"]}"
-    memory = "${var.master["memory"]}"
-    hourly_billing = "${var.master["hourly_billing"]}"
+  datacenter = "${var.datacenter}"
+  cores = "${var.master["cpu_cores"]}"
+  memory = "${var.master["memory"]}"
+  hourly_billing = "${var.master["hourly_billing"]}"
 
-    local_disk = "${var.master["local_disk"]}"
-    disks = [
-      "${var.master["disk_size"]}",
-      "${var.master["docker_vol_size"]}"
-    ]
+  local_disk = "${var.master["local_disk"]}"
+  disks = [
+    "${var.master["disk_size"]}",
+    "${var.master["docker_vol_size"]}"
+  ]
 
-    # Virtual IP uses a secondary IP on public interface
-    file_storage_ids = ["${local.master_fs_ids}"]
+  # Virtual IP uses a secondary IP on public interface
+  file_storage_ids = ["${local.master_fs_ids}"]
 
-    network_speed = "${var.master["network_speed"]}"
-    private_network_only = "${var.master["private_network_only"]}"
+  network_speed = "${var.master["network_speed"]}"
+  private_network_only = "${var.master["private_network_only"]}"
 
-    public_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}"
-    ]
+  public_security_group_ids = [
+    "${ibm_security_group.cluster_public.id}"
+  ]
 
-    private_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}",
-      "${ibm_security_group.master_group.id}"
-    ]
+  private_security_group_ids = [
+    "${ibm_security_group.cluster_private.id}",
+    "${ibm_security_group.master_group.id}"
+  ]
 
-    tags = [
-      "${var.deployment}",
-      "icp-master",
-      "${random_id.clusterid.hex}"
-    ]
+  tags = [
+    "${var.deployment}",
+    "icp-master",
+    "${random_id.clusterid.hex}"
+  ]
 
-    user_metadata = <<EOF
+  user_metadata = <<EOF
 #cloud-config
 packages:
   - unzip
@@ -241,67 +248,68 @@ runcmd:
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
 EOF
 
-    # Permit an ssh loging for the key owner.
-    # You an have multiple keys defined.
-    ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  # Permit an ssh loging for the key owner.
+  # You an have multiple keys defined.
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
 
-    notes = "Master node for ICP deployment"
+  notes = "Master node for ICP deployment"
 
-    # wait until cloud-init finishes
-    provisioner "remote-exec" {
-      connection {
-        user          = "icpdeploy"
-        private_key   = "${tls_private_key.installkey.private_key_pem}"
-        bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
-      }
-
-      inline = [
-        "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
-      ]
+  # wait until cloud-init finishes
+  provisioner "remote-exec" {
+    connection {
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
+
+    inline = [
+      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
+    ]
+  }
 }
 
 resource "ibm_compute_vm_instance" "icp-mgmt" {
-    count = "${var.mgmt["nodes"]}"
+  depends_on = ["null_resource.image_load"]
+  count = "${var.mgmt["nodes"]}"
 
-    hostname = "${format("${lower(var.deployment)}-mgmt%02d", count.index + 1) }"
-    domain = "${var.domain}"
+  hostname = "${format("${lower(var.deployment)}-mgmt%02d-${random_id.clusterid.hex}", count.index + 1) }"
+  domain = "${var.domain}"
 
-    os_reference_code = "${var.os_reference_code}"
+  os_reference_code = "${var.os_reference_code}"
 
-    datacenter = "${var.datacenter}"
+  datacenter = "${var.datacenter}"
 
-    cores = "${var.mgmt["cpu_cores"]}"
-    memory = "${var.mgmt["memory"]}"
+  cores = "${var.mgmt["cpu_cores"]}"
+  memory = "${var.mgmt["memory"]}"
 
-    local_disk = "${var.mgmt["local_disk"]}"
-    disks = [
-      "${var.mgmt["disk_size"]}",
-      "${var.mgmt["docker_vol_size"]}"
-    ]
+  local_disk = "${var.mgmt["local_disk"]}"
+  disks = [
+    "${var.mgmt["disk_size"]}",
+    "${var.mgmt["docker_vol_size"]}"
+  ]
 
-    network_speed = "${var.mgmt["network_speed"]}"
-    private_network_only = "${var.mgmt["private_network_only"]}"
+  network_speed = "${var.mgmt["network_speed"]}"
+  private_network_only = "${var.mgmt["private_network_only"]}"
 
-    public_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}"
-    ]
+  public_security_group_ids = [
+    "${ibm_security_group.cluster_public.id}"
+  ]
 
-    private_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}"
-    ]
+  private_security_group_ids = [
+    "${ibm_security_group.cluster_private.id}"
+  ]
 
-    tags = [
-      "${var.deployment}",
-      "icp-management",
-      "${random_id.clusterid.hex}"
-    ]
+  tags = [
+    "${var.deployment}",
+    "icp-management",
+    "${random_id.clusterid.hex}"
+  ]
 
-    # Permit an ssh loging for the key owner.
-    # You an have multiple keys defined.
-    ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  # Permit an ssh loging for the key owner.
+  # You an have multiple keys defined.
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
 
-    user_metadata = <<EOF
+  user_metadata = <<EOF
 #cloud-config
 packages:
   - unzip
@@ -328,56 +336,58 @@ runcmd:
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
 EOF
 
-    hourly_billing = "${var.mgmt["hourly_billing"]}"
+  hourly_billing = "${var.mgmt["hourly_billing"]}"
 
-    notes = "Management node for ICP deployment"
+  notes = "Management node for ICP deployment"
 
-    # wait until cloud-init finishes
-    provisioner "remote-exec" {
-      connection {
-        user          = "icpdeploy"
-        private_key   = "${tls_private_key.installkey.private_key_pem}"
-        bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
-      }
-
-      inline = [
-        "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
-      ]
+  # wait until cloud-init finishes
+  provisioner "remote-exec" {
+    connection {
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
+
+    inline = [
+      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
+    ]
+  }
 }
 
 resource "ibm_compute_vm_instance" "icp-va" {
-    count = "${var.va["nodes"]}"
-    hostname = "${format("${lower(var.deployment)}-va%02d", count.index + 1) }"
-    domain = "${var.domain}"
-    os_reference_code = "${var.os_reference_code}"
-    datacenter = "${var.datacenter}"
-    cores = "${var.va["cpu_cores"]}"
-    memory = "${var.va["memory"]}"
+  count = "${var.va["nodes"]}"
+  depends_on = ["null_resource.image_load"]
 
-    network_speed = "${var.va["network_speed"]}"
-    private_network_only = "${var.va["private_network_only"]}"
-    public_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}"
-    ]
-    private_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}"
-    ]
+  hostname = "${format("${lower(var.deployment)}-va%02d-${random_id.clusterid.hex}", count.index + 1) }"
+  domain = "${var.domain}"
+  os_reference_code = "${var.os_reference_code}"
+  datacenter = "${var.datacenter}"
+  cores = "${var.va["cpu_cores"]}"
+  memory = "${var.va["memory"]}"
 
-    local_disk = "${var.va["local_disk"]}"
-    disks = [
-      "${var.va["disk_size"]}",
-      "${var.va["docker_vol_size"]}"
-    ]
+  network_speed = "${var.va["network_speed"]}"
+  private_network_only = "${var.va["private_network_only"]}"
+  public_security_group_ids = [
+    "${ibm_security_group.cluster_public.id}"
+  ]
+  private_security_group_ids = [
+    "${ibm_security_group.cluster_private.id}"
+  ]
 
-    tags = [
-      "${var.deployment}",
-      "icp-management",
-      "${random_id.clusterid.hex}"
-    ]
+  local_disk = "${var.va["local_disk"]}"
+  disks = [
+    "${var.va["disk_size"]}",
+    "${var.va["docker_vol_size"]}"
+  ]
 
-    hourly_billing = "${var.va["hourly_billing"]}"
-    user_metadata = <<EOF
+  tags = [
+    "${var.deployment}",
+    "icp-management",
+    "${random_id.clusterid.hex}"
+  ]
+
+  hourly_billing = "${var.va["hourly_billing"]}"
+  user_metadata = <<EOF
 #cloud-config
 packages:
   - unzip
@@ -404,58 +414,60 @@ runcmd:
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
 EOF
 
-    # Permit an ssh loging for the key owner.
-    # You an have multiple keys defined.
-    ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  # Permit an ssh loging for the key owner.
+  # You an have multiple keys defined.
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
 
-    notes = "Vulnerability Advisor node for ICP deployment"
+  notes = "Vulnerability Advisor node for ICP deployment"
 
-    # wait until cloud-init finishes
-    provisioner "remote-exec" {
-      connection {
-        user          = "icpdeploy"
-        private_key   = "${tls_private_key.installkey.private_key_pem}"
-        bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
-      }
-
-      inline = [
-        "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
-      ]
+  # wait until cloud-init finishes
+  provisioner "remote-exec" {
+    connection {
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
+
+    inline = [
+      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
+    ]
+  }
 }
 
 resource "ibm_compute_vm_instance" "icp-proxy" {
-    count = "${var.proxy["nodes"]}"
-    hostname = "${format("${lower(var.deployment)}-proxy%02d", count.index + 1) }"
-    domain = "${var.domain}"
-    os_reference_code = "${var.os_reference_code}"
-    datacenter = "${var.datacenter}"
-    cores = "${var.proxy["cpu_cores"]}"
-    memory = "${var.proxy["memory"]}"
-    hourly_billing = "${var.proxy["hourly_billing"]}"
-    tags = [
-      "${var.deployment}",
-      "icp-proxy",
-      "${random_id.clusterid.hex}"
-    ]
+  depends_on = ["null_resource.image_load"]
+  count = "${var.proxy["nodes"]}"
 
-    network_speed = "${var.proxy["network_speed"]}"
-    private_network_only = "${var.proxy["private_network_only"]}"
-    public_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}",
-    ]
-    private_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}",
-      "${ibm_security_group.proxy_group.id}"
-    ]
+  hostname = "${format("${lower(var.deployment)}-proxy%02d-${random_id.clusterid.hex}", count.index + 1) }"
+  domain = "${var.domain}"
+  os_reference_code = "${var.os_reference_code}"
+  datacenter = "${var.datacenter}"
+  cores = "${var.proxy["cpu_cores"]}"
+  memory = "${var.proxy["memory"]}"
+  hourly_billing = "${var.proxy["hourly_billing"]}"
+  tags = [
+    "${var.deployment}",
+    "icp-proxy",
+    "${random_id.clusterid.hex}"
+  ]
 
-    local_disk = "${var.proxy["local_disk"]}"
-    disks = [
-      "${var.proxy["disk_size"]}",
-      "${var.proxy["docker_vol_size"]}"
-    ]
+  network_speed = "${var.proxy["network_speed"]}"
+  private_network_only = "${var.proxy["private_network_only"]}"
+  public_security_group_ids = [
+    "${ibm_security_group.cluster_public.id}",
+  ]
+  private_security_group_ids = [
+    "${ibm_security_group.cluster_private.id}",
+    "${ibm_security_group.proxy_group.id}"
+  ]
 
-    user_metadata = <<EOF
+  local_disk = "${var.proxy["local_disk"]}"
+  disks = [
+    "${var.proxy["disk_size"]}",
+    "${var.proxy["docker_vol_size"]}"
+  ]
+
+  user_metadata = <<EOF
 #cloud-config
 packages:
   - unzip
@@ -482,63 +494,64 @@ runcmd:
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
 EOF
 
-    # Permit an ssh loging for the key owner.
-    # You an have multiple keys defined.
-    ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  # Permit an ssh loging for the key owner.
+  # You an have multiple keys defined.
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
 
-    notes = "Proxy node for ICP deployment"
+  notes = "Proxy node for ICP deployment"
 
-    # wait until cloud-init finishes
-    provisioner "remote-exec" {
-      connection {
-        user          = "icpdeploy"
-        private_key   = "${tls_private_key.installkey.private_key_pem}"
-        bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
-      }
-
-      inline = [
-        "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
-      ]
+  # wait until cloud-init finishes
+  provisioner "remote-exec" {
+    connection {
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
+
+    inline = [
+      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
+    ]
+  }
 }
 
 
 resource "ibm_compute_vm_instance" "icp-worker" {
-    count = "${var.worker["nodes"]}"
+  depends_on = ["null_resource.image_load"]
+  count = "${var.worker["nodes"]}"
 
-    hostname = "${format("${lower(var.deployment)}-worker%02d", count.index + 1) }"
-    domain = "${var.domain}"
+  hostname = "${format("${lower(var.deployment)}-worker%02d-${random_id.clusterid.hex}", count.index + 1) }"
+  domain = "${var.domain}"
 
-    os_reference_code = "${var.os_reference_code}"
+  os_reference_code = "${var.os_reference_code}"
 
-    datacenter = "${var.datacenter}"
+  datacenter = "${var.datacenter}"
 
-    cores = "${var.worker["cpu_cores"]}"
-    memory = "${var.worker["memory"]}"
+  cores = "${var.worker["cpu_cores"]}"
+  memory = "${var.worker["memory"]}"
 
-    network_speed = "${var.worker["network_speed"]}"
-    private_network_only = "${var.worker["private_network_only"]}"
-    public_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}",
-    ]
-    private_security_group_ids = [
-      "${ibm_security_group.cluster_group.id}"
-    ]
+  network_speed = "${var.worker["network_speed"]}"
+  private_network_only = "${var.worker["private_network_only"]}"
+  public_security_group_ids = [
+    "${ibm_security_group.cluster_public.id}",
+  ]
+  private_security_group_ids = [
+    "${ibm_security_group.cluster_private.id}"
+  ]
 
-    local_disk = "${var.worker["local_disk"]}"
-    disks = [
-      "${var.worker["disk_size"]}",
-      "${var.worker["docker_vol_size"]}"
-    ]
+  local_disk = "${var.worker["local_disk"]}"
+  disks = [
+    "${var.worker["disk_size"]}",
+    "${var.worker["docker_vol_size"]}"
+  ]
 
-    hourly_billing = "${var.worker["hourly_billing"]}"
-    tags = [
-      "${var.deployment}",
-      "icp-worker",
-      "${random_id.clusterid.hex}"
-    ]
+  hourly_billing = "${var.worker["hourly_billing"]}"
+  tags = [
+    "${var.deployment}",
+    "icp-worker",
+    "${random_id.clusterid.hex}"
+  ]
 
-    user_metadata = <<EOF
+  user_metadata = <<EOF
 #cloud-config
 packages:
   - unzip
@@ -565,22 +578,22 @@ runcmd:
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
 EOF
 
-    # Permit an ssh loging for the key owner.
-    # You an have multiple keys defined.
-    ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  # Permit an ssh loging for the key owner.
+  # You an have multiple keys defined.
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
 
-    notes = "Worker node for ICP deployment"
+  notes = "Worker node for ICP deployment"
 
-    # wait until cloud-init finishes
-    provisioner "remote-exec" {
-      connection {
-        user          = "icpdeploy"
-        private_key   = "${tls_private_key.installkey.private_key_pem}"
-        bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
-      }
-
-      inline = [
-        "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
-      ]
+  # wait until cloud-init finishes
+  provisioner "remote-exec" {
+    connection {
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
+
+    inline = [
+      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
+    ]
+  }
 }

@@ -37,7 +37,7 @@ module "icpprovision" {
       "cluster_CA_domain"               = "${var.master["nodes"] > 1 ? ibm_lbaas.master-lbaas.vip : ""}"
       "cluster_name"                    = "${var.deployment}"
       "calico_ip_autodetection_method"  = "interface=eth0"
-      "default_admin_password"          = "${var.icppassword}"
+      "default_admin_password"          = "${var.icppassword != "" ? "${var.icppassword}" : "${random_id.adminpassword.hex}"}"
       "disabled_management_services"    = [
           "${var.va["nodes"] == 0 ? "va" : "" }"
       ]

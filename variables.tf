@@ -9,28 +9,18 @@ variable "key_name" {
   default = ""
 }
 
-variable "icp_admin_password" {
-  description = "ICP Admin Users password password. 'Generate' generates a new random password"
-  default     = "Generate"
-}
-
 ##### Common VM specifications ######
 # Provide values for these in terraform.tfvars
 variable "datacenter" { }
 
-variable "instance_name" {
-  description = "Identifier used as the root of the ICP cluster name with '-cluster' appended to it."
-  default = "my"
-}
-
 variable "deployment" {
-         description = "Identifier prefix added to the host names."
-         default = "dev01"
+   description = "Identifier prefix added to the host names."
+   default = "icp"
 }
 
 variable "os_reference_code" {
-         description = "IBM Cloud OS reference code to determine OS, version, word length"
-         default = "UBUNTU_16_64"
+  description = "IBM Cloud OS reference code to determine OS, version, word length"
+  default = "UBUNTU_16_64"
 }
 
 variable "domain" {
@@ -188,8 +178,8 @@ variable "image_location" {
 }
 
 variable "icppassword" {
-  description = "Password for the initial admin user in ICP"
-  default     = "admin"
+  description = "Password for the initial admin user in ICP; blank to generate"
+  default     = ""
 }
 
 variable "icp_inception_image" {
