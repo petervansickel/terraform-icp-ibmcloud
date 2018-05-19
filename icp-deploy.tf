@@ -1,11 +1,3 @@
-locals {
-    # use a local private registry we stand up on the boot node if image location is specified
-    inception_parts = "${split("/", var.icp_inception_image)}"
-    inception_image = "${var.image_location == "" || length(local.inception_parts) == 3 ?
-        "${var.icp_inception_image}" :
-        "${var.deployment}-boot.${random_id.clusterid.hex}.${var.domain}/${var.icp_inception_image}" }"
-}
-
 ##################################
 ### Deploy ICP to cluster
 ##################################

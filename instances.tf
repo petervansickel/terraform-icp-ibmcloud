@@ -21,10 +21,10 @@ resource "tls_self_signed_cert" "registry_cert" {
   private_key_pem = "${tls_private_key.registry_key.private_key_pem}"
 
   subject {
-    common_name  = "${var.deployment}-boot.${random_id.clusterid.hex}.${var.domain}"
+    common_name  = "${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}"
   }
 
-  dns_names  = ["${var.deployment}-boot.${random_id.clusterid.hex}.${var.domain}"]
+  dns_names  = ["${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}"]
   validity_period_hours = "${24 * 365 * 10}"
 
   allowed_uses = [
@@ -38,9 +38,6 @@ data "ibm_compute_ssh_key" "public_key" {
 }
 
 locals {
-  image_package_uri = "${substr(var.image_location, 0, min(2, length(var.image_location))) == "s3" ?
-    var.image_location :
-      var.image_location  == "" ? "" : "s3://${element(concat(aws_s3_bucket.icp_binaries.*.id, list("")), 0)}/ibm-cloud-private.tar.gz"}"
   docker_package_uri = "${substr(var.docker_package_location, 0, min(2, length(var.docker_package_location))) == "s3" ?
     var.docker_package_location :
       var.docker_package_location == "" ? "" : "s3://${element(concat(aws_s3_bucket.icp_binaries.*.id, list("")), 0)}/icp-docker.bin"}"
@@ -50,6 +47,12 @@ locals {
         ibm_storage_file.fs_registry.*.id,
         list(""))
     )}"
+
+  # use a local private registry we stand up on the boot node if image location is specified
+  inception_parts = "${split("/", var.icp_inception_image)}"
+  inception_image = "${var.image_location == "" || length(local.inception_parts) == 3 ?
+      "${var.icp_inception_image}" :
+      "${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/${var.icp_inception_image}" }"
 }
 
 # Generate a random string in case user wants us to generate admin password
@@ -98,6 +101,10 @@ resource "ibm_compute_vm_instance" "icp-boot" {
 
     user_metadata = <<EOF
 #cloud-config
+packages:
+  - unzip
+  - python
+  - pv
 users:
   - default
   - name: icpdeploy
@@ -119,18 +126,12 @@ write_files:
     permissions: '600'
     encoding: b64
     content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
-  - path: /etc/docker/certs.d/${var.deployment}-boot.${random_id.clusterid.hex}.${var.domain}/ca.crt
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
   - path: /etc/registry/registry-key.pem
     permissions: '600'
     encoding: b64
     content: ${base64encode("${tls_private_key.registry_key.private_key_pem}")}
 runcmd:
-  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc ${local.image_package_uri != "" ? "-i ${local.image_package_uri}" : "" } -s ${var.icp_inception_image}
-  - mkdir -p /registry
-  - docker run --restart=always -d --name docker-registry -v /etc/registry:/certs -v /registry:/registry -e REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/registry -e REGISTRY_HTTP_ADDR=0.0.0.0:443 -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/registry-cert.pem -e REGISTRY_HTTP_TLS_KEY=/certs/registry-key.pem  -p 443:443 registry:2
+  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
 EOF
 
     notes = "Boot machine for ICP deployment"
@@ -156,7 +157,7 @@ EOF
 
       inline = [
         "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done",
-        "${var.image_location != "" ? "/opt/ibm/scripts/load_image.sh -p /tmp/${basename(var.image_location)} -r ${var.deployment}-boot.${random_id.clusterid.hex}.${var.domain}" : "/bin/true" }"
+        "${var.image_location != "" ? "/opt/ibm/scripts/load_image.sh -p /tmp/${basename(var.image_location)} -r ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}" : "/bin/true" }"
       ]
     }
 }
@@ -219,7 +220,7 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}/ca.crt
+  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
     permissions: '600'
     encoding: b64
     content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
@@ -231,13 +232,13 @@ ${var.master["nodes"] > 1 ? "
 :
 "" }
 runcmd:
-  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc ${local.image_package_uri != "" ? "-i ${local.image_package_uri}" : "" } -s ${var.icp_inception_image}
+  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
   - mkdir -p /var/lib/registry
   - mkdir -p /var/lib/icp/audit
   - echo '${ibm_storage_file.fs_registry.mountpoint} /var/lib/registry nfs defaults 0 0' | tee -a /etc/fstab
   - echo '${ibm_storage_file.fs_audit.mountpoint} /var/lib/icp/audit nfs defaults 0 0' | tee -a /etc/fstab
   - sudo mount -a
-  - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot.${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
+  - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
 EOF
 
     # Permit an ssh loging for the key owner.
@@ -318,13 +319,13 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}/ca.crt
+  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
     permissions: '600'
     encoding: b64
     content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
-  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc ${local.image_package_uri != "" ? "-i ${local.image_package_uri}" : "" } -s ${var.icp_inception_image}
-  - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot.${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
+  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
+  - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
 EOF
 
     hourly_billing = "${var.mgmt["hourly_billing"]}"
@@ -394,13 +395,13 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}/ca.crt
+  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
     permissions: '600'
     encoding: b64
     content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
-  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc ${local.image_package_uri != "" ? "-i ${local.image_package_uri}" : "" } -s ${var.icp_inception_image}
-  - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot.${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
+  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
+  - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
 EOF
 
     # Permit an ssh loging for the key owner.
@@ -472,13 +473,13 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}/ca.crt
+  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
     permissions: '600'
     encoding: b64
     content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
-  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc ${local.image_package_uri != "" ? "-i ${local.image_package_uri}" : "" } -s ${var.icp_inception_image}
-  - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot.${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
+  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
+  - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
 EOF
 
     # Permit an ssh loging for the key owner.
@@ -555,13 +556,13 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}/ca.crt
+  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
     permissions: '600'
     encoding: b64
     content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
-  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc ${local.image_package_uri != "" ? "-i ${local.image_package_uri}" : "" } -s ${var.icp_inception_image}
-  - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot.${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
+  - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
+  - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
 EOF
 
     # Permit an ssh loging for the key owner.

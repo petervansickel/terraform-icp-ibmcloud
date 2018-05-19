@@ -137,12 +137,6 @@ while getopts ":p:d:i:s:u:" arg; do
       d)
         docker_disk=${OPTARG}
         ;;
-      i)
-        image_location=${OPTARG}
-        ;;
-      s)
-        image_bootstrap=${OPTARG}
-        ;;
       u)
         docker_user=${OPTARG}
         ;;
