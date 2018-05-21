@@ -34,7 +34,7 @@ variable "boot" {
   type = "map"
 
   default = {
-    cpu_cores         = "1"
+    cpu_cores         = "2"
     memory            = "2048"
 
     disk_size         = "100" // GB
@@ -94,8 +94,8 @@ variable "proxy" {
   default = {
     nodes       = "1"
 
-    cpu_cores   = "1"
-    memory      = "2048"
+    cpu_cores   = "2"
+    memory      = "4096"
 
     disk_size         = "100" // GB
     docker_vol_size   = "100" // GB

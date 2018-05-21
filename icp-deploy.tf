@@ -1,3 +1,9 @@
+locals {
+    registry_split = "${split("@", var.icp_inception_image)}"
+    registry_creds = "${length(local.registry_split) > 1 ? "${element(local.registry_split, 0)}" : ""}"
+    image = "${length(local.registry_split) > 1 ? "${replace(var.icp_inception_image, "/.*@/", "")}" : "${var.icp_inception_image}" }"
+}
+
 ##################################
 ### Deploy ICP to cluster
 ##################################
@@ -41,7 +47,11 @@ module "icpprovision" {
       "disabled_management_services"    = [
           "${var.va["nodes"] == 0 ? "va" : "" }"
       ]
-      "image_repo"                      = "${dirname(local.inception_image)}"
+      "image_repo"                      = "${dirname(local.image)}"
+      "private_registry_enabled"        = "${local.registry_creds != "" ? "true" : "false" }"
+      "private_registry_server"         = "${local.registry_creds != "" ? "${dirname(dirname(local.image))}" : "" }"
+      "docker_username"                 = "${local.registry_creds != "" ? "${replace(local.registry_creds, "/:.*/", "")}" : "" }"
+      "docker_password"                 = "${local.registry_creds != "" ? "${replace(local.registry_creds, "/.*:/", "")}" : "" }"
     }
 
     # We will let terraform generate a new ssh keypair
@@ -54,4 +64,32 @@ module "icpprovision" {
     ssh_user        = "icpdeploy"
     ssh_key_base64  = "${base64encode(tls_private_key.installkey.private_key_pem)}"
     ssh_agent       = false
+}
+
+output "ICP Console load balancer DNS (external)" {
+  value = "${element(ibm_lbaas.master-lbaas.*.vip, 0)}"
+}
+
+output "ICP Proxy load balancer DNS (external)" {
+  value = "${element(ibm_lbaas.proxy-lbaas.*.vip, 0)}"
+}
+
+output "ICP Console URL" {
+  value = "https://${element(ibm_lbaas.master-lbaas.*.vip, 0)}:8443"
+}
+
+output "ICP Registry URL" {
+  value = "${element(ibm_lbaas.master-lbaas.*.vip, 0)}:8500"
+}
+
+output "ICP Kubernetes API URL" {
+  value = "https://${element(ibm_lbaas.master-lbaas.*.vip, 0)}:8001"
+}
+
+output "ICP Admin Username" {
+  value = "admin"
+}
+
+output "ICP Admin Password" {
+  value = "${var.icppassword}"
 }
