@@ -37,10 +37,22 @@ data "ibm_compute_ssh_key" "public_key" {
   label = "${var.key_name}"
 }
 
+data "ibm_network_vlan" "private_vlan" {
+  count = "${var.private_vlan_router_hostname != "" ? 1 : 0}"
+  router_hostname = "${var.private_vlan_router_hostname}.${var.datacenter}"
+  number = "${var.private_vlan_number}"
+}
+
+data "ibm_network_vlan" "public_vlan" {
+  count = "${var.private_network_only != true && var.public_vlan_router_hostname != "" ? 1 : 0}"
+  router_hostname = "${var.public_vlan_router_hostname}.${var.datacenter}"
+  number = "${var.public_vlan_number}"
+}
+
+
 locals {
-  docker_package_uri = "${substr(var.docker_package_location, 0, min(2, length(var.docker_package_location))) == "s3" ?
-    var.docker_package_location :
-      var.docker_package_location == "" ? "" : "s3://${element(concat(aws_s3_bucket.icp_binaries.*.id, list("")), 0)}/icp-docker.bin"}"
+  # TODO only ubuntu for now
+  docker_package_uri = ""
   master_fs_ids = "${compact(
       concat(
         ibm_storage_file.fs_audit.*.id,
@@ -53,6 +65,9 @@ locals {
   inception_image = "${var.image_location == "" || length(local.inception_parts) == 3 ?
       "${var.icp_inception_image}" :
       "${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/${var.icp_inception_image}" }"
+
+  private_vlan_id = "${element(concat(data.ibm_network_vlan.private_vlan.*.id, list("-1")), 0) }"
+  public_vlan_id = "${element(concat(data.ibm_network_vlan.public_vlan.*.id, list("-1")), 0)}"
 }
 
 # Generate a random string in case user wants us to generate admin password
@@ -84,16 +99,19 @@ resource "ibm_compute_vm_instance" "icp-boot" {
   ]
 
   hourly_billing = "${var.boot["hourly_billing"]}"
-  private_network_only = "${var.boot["private_network_only"]}"
+  private_network_only = "${var.private_network_only}"
+  public_vlan_id = "${local.public_vlan_id}"
+  private_vlan_id = "${local.private_vlan_id}"
 
-  public_security_group_ids = [
-    "${ibm_security_group.cluster_public.id}",
-    "${ibm_security_group.boot_node_public.id}"
-  ]
+  public_security_group_ids = ["${compact(concat(
+    ibm_security_group.cluster_public.*.id,
+    list("${var.private_network_only != true ? ibm_security_group.boot_node_public.id : "" }")
+  ))}"]
 
-  private_security_group_ids = [
-    "${ibm_security_group.cluster_private.id}"
-  ]
+  private_security_group_ids = ["${compact(concat(
+    list("${ibm_security_group.cluster_private.id}"),
+    ibm_security_group.boot_node_public.*.id
+  ))}"]
 
   # Permit an ssh loging for the key owner.
   # You an have multiple keys defined.
@@ -145,7 +163,7 @@ resource "null_resource" "image_load" {
       host          = "${ibm_compute_vm_instance.icp-boot.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
-      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
 
     source = "${var.image_location}"
@@ -158,7 +176,7 @@ resource "null_resource" "image_load" {
       host          = "${ibm_compute_vm_instance.icp-boot.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
-      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
 
     inline = [
@@ -192,11 +210,14 @@ resource "ibm_compute_vm_instance" "icp-master" {
   file_storage_ids = ["${local.master_fs_ids}"]
 
   network_speed = "${var.master["network_speed"]}"
-  private_network_only = "${var.master["private_network_only"]}"
+  private_network_only = "${var.private_network_only}"
+  public_vlan_id = "${local.public_vlan_id}"
+  private_vlan_id = "${local.private_vlan_id}"
 
-  public_security_group_ids = [
-    "${ibm_security_group.cluster_public.id}"
-  ]
+
+  public_security_group_ids = ["${compact(concat(
+    ibm_security_group.cluster_public.*.id
+  ))}"]
 
   private_security_group_ids = [
     "${ibm_security_group.cluster_private.id}",
@@ -259,7 +280,7 @@ EOF
     connection {
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
-      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
 
     inline = [
@@ -289,11 +310,13 @@ resource "ibm_compute_vm_instance" "icp-mgmt" {
   ]
 
   network_speed = "${var.mgmt["network_speed"]}"
-  private_network_only = "${var.mgmt["private_network_only"]}"
+  private_network_only = "${var.private_network_only}"
+  public_vlan_id = "${local.public_vlan_id}"
+  private_vlan_id = "${local.private_vlan_id}"
 
-  public_security_group_ids = [
-    "${ibm_security_group.cluster_public.id}"
-  ]
+  public_security_group_ids = ["${compact(concat(
+    ibm_security_group.cluster_public.*.id
+  ))}"]
 
   private_security_group_ids = [
     "${ibm_security_group.cluster_private.id}"
@@ -345,7 +368,7 @@ EOF
     connection {
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
-      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
 
     inline = [
@@ -366,10 +389,14 @@ resource "ibm_compute_vm_instance" "icp-va" {
   memory = "${var.va["memory"]}"
 
   network_speed = "${var.va["network_speed"]}"
-  private_network_only = "${var.va["private_network_only"]}"
-  public_security_group_ids = [
-    "${ibm_security_group.cluster_public.id}"
-  ]
+  private_network_only = "${var.private_network_only}"
+  public_vlan_id = "${local.public_vlan_id}"
+  private_vlan_id = "${local.private_vlan_id}"
+
+  public_security_group_ids = ["${compact(concat(
+    ibm_security_group.cluster_public.*.id
+  ))}"]
+
   private_security_group_ids = [
     "${ibm_security_group.cluster_private.id}"
   ]
@@ -425,7 +452,7 @@ EOF
     connection {
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
-      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
 
     inline = [
@@ -452,10 +479,14 @@ resource "ibm_compute_vm_instance" "icp-proxy" {
   ]
 
   network_speed = "${var.proxy["network_speed"]}"
-  private_network_only = "${var.proxy["private_network_only"]}"
-  public_security_group_ids = [
-    "${ibm_security_group.cluster_public.id}",
-  ]
+  private_network_only = "${var.private_network_only}"
+  public_vlan_id = "${local.public_vlan_id}"
+  private_vlan_id = "${local.private_vlan_id}"
+
+  public_security_group_ids = ["${compact(concat(
+    ibm_security_group.cluster_public.*.id
+  ))}"]
+
   private_security_group_ids = [
     "${ibm_security_group.cluster_private.id}",
     "${ibm_security_group.proxy_group.id}"
@@ -505,7 +536,7 @@ EOF
     connection {
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
-      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
 
     inline = [
@@ -530,10 +561,14 @@ resource "ibm_compute_vm_instance" "icp-worker" {
   memory = "${var.worker["memory"]}"
 
   network_speed = "${var.worker["network_speed"]}"
-  private_network_only = "${var.worker["private_network_only"]}"
-  public_security_group_ids = [
-    "${ibm_security_group.cluster_public.id}",
-  ]
+  private_network_only = "${var.private_network_only}"
+  public_vlan_id = "${local.public_vlan_id}"
+  private_vlan_id = "${local.private_vlan_id}"
+
+  public_security_group_ids = ["${compact(concat(
+    ibm_security_group.cluster_public.*.id
+  ))}"]
+
   private_security_group_ids = [
     "${ibm_security_group.cluster_private.id}"
   ]
@@ -589,7 +624,7 @@ EOF
     connection {
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
-      bastion_host  = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
     }
 
     inline = [

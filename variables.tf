@@ -13,6 +13,26 @@ variable "key_name" {
 # Provide values for these in terraform.tfvars
 variable "datacenter" { }
 
+variable "private_vlan_router_hostname" {
+   default = ""
+   description = "Private VLAN router to place all VMs behind.  e.g. bcr01a. See Network > IP Management > VLANs in the portal. Leave blank to let the system choose."
+}
+
+variable "private_vlan_number" {
+   default = -1
+   description = "Private VLAN number to place all VMs on.  e.g. 1211. See Network > IP Management > VLANs in the portal. Leave blank to let the system choose."
+}
+
+variable "public_vlan_router_hostname" {
+   default = ""
+   description = "Public VLAN router to place all VMs behind.  e.g. fcr01a. See Network > IP Management > VLANs in the portal. Leave blank to let the system choose."
+}
+
+variable "public_vlan_number" {
+   default = -1
+   description = "Public VLAN number to place all VMs on.  e.g. 1171. See Network > IP Management > VLANs in the portal. Leave blank to let the system choose."
+}
+
 variable "deployment" {
    description = "Identifier prefix added to the host names."
    default = "icp"
@@ -26,6 +46,11 @@ variable "os_reference_code" {
 variable "domain" {
   description = "Specify domain name to be used for linux customization on the VMs, or leave blank to use <instance_name>.icp"
   default     = ""
+}
+
+variable "private_network_only" {
+  description = "Specify false to place the cluster on the public network. If public network access is disabled, you will require a NAT gateway device like a Gateway Appliance on the VLAN."
+  default = false
 }
 
 ##### ICP Instance details ######
@@ -42,7 +67,6 @@ variable "boot" {
     local_disk        = false
 
     network_speed     = "1000"
-    private_network_only = false
 
     hourly_billing = true
   }
@@ -62,7 +86,6 @@ variable "master" {
     local_disk        = false
 
     network_speed     = "1000"
-    private_network_only = false
 
     hourly_billing = true
   }
@@ -82,7 +105,6 @@ variable "mgmt" {
     local_disk  = false
 
     network_speed = "1000"
-    private_network_only = false
 
     hourly_billing=true
   }
@@ -102,7 +124,6 @@ variable "proxy" {
     local_disk  = false
 
     network_speed= "1000"
-    private_network_only = false
 
     hourly_billing = true
   }
@@ -122,7 +143,6 @@ variable "va" {
     local_disk  = false
 
     network_speed = "1000"
-    private_network_only = false
 
     hourly_billing = true
   }
@@ -143,7 +163,6 @@ variable "worker" {
     local_disk  = false
 
     network_speed= "1000"
-    private_network_only = false
 
     hourly_billing = true
   }
@@ -189,10 +208,10 @@ variable "icp_inception_image" {
 
 variable "network_cidr" {
   description = "Pod network CIDR "
-  default     = "192.168.0.0/16"
+  default     = "172.20.0.0/16"
 }
 
 variable "service_network_cidr" {
   description = "Service network CIDR "
-  default     = "10.10.10.0/24"
+  default     = "172.21.0.0/16"
 }

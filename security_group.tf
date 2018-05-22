@@ -17,11 +17,13 @@ resource "ibm_security_group_rule" "allow_cluster_egress_private" {
 }
 
 resource "ibm_security_group" "cluster_public" {
+  count = "${var.private_network_only ? 0 : 1}"
   name = "${var.deployment}-cluster-pub-${random_id.clusterid.hex}"
   description = "allow intercluster communication"
 }
 
 resource "ibm_security_group_rule" "allow_ingress_from_self_pub" {
+  count = "${var.private_network_only ? 0 : 1}"
   direction = "ingress"
   ether_type = "IPv4"
   remote_group_id = "${ibm_security_group.cluster_public.id}"
@@ -29,6 +31,7 @@ resource "ibm_security_group_rule" "allow_ingress_from_self_pub" {
 }
 
 resource "ibm_security_group_rule" "allow_cluster_public" {
+  count = "${var.private_network_only ? 0 : 1}"
   direction = "egress"
   ether_type = "IPv4"
   security_group_id = "${ibm_security_group.cluster_public.id}"

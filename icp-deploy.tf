@@ -1,7 +1,8 @@
 locals {
     registry_split = "${split("@", var.icp_inception_image)}"
     registry_creds = "${length(local.registry_split) > 1 ? "${element(local.registry_split, 0)}" : ""}"
-    image = "${length(local.registry_split) > 1 ? "${replace(var.icp_inception_image, "/.*@/", "")}" : "${var.icp_inception_image}" }"
+    image          = "${length(local.registry_split) > 1 ? "${replace(var.icp_inception_image, "/.*@/", "")}" : "${var.icp_inception_image}" }"
+    icppassword    = "${var.icppassword != "" ? "${var.icppassword}" : "${random_id.adminpassword.hex}"}"
 }
 
 ##################################
@@ -12,7 +13,7 @@ module "icpprovision" {
 
     # Provide IP addresses for boot, master, mgmt, va, proxy and workers
     boot-node = "${ibm_compute_vm_instance.icp-boot.ipv4_address_private}"
-    bastion_host = "${ibm_compute_vm_instance.icp-boot.ipv4_address}"
+    bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
     icp-host-groups = {
         master = ["${ibm_compute_vm_instance.icp-master.*.ipv4_address_private}"]
         proxy = ["${ibm_compute_vm_instance.icp-proxy.*.ipv4_address_private}"]
@@ -43,7 +44,7 @@ module "icpprovision" {
       "cluster_CA_domain"               = "${var.master["nodes"] > 1 ? ibm_lbaas.master-lbaas.vip : ""}"
       "cluster_name"                    = "${var.deployment}"
       "calico_ip_autodetection_method"  = "interface=eth0"
-      "default_admin_password"          = "${var.icppassword != "" ? "${var.icppassword}" : "${random_id.adminpassword.hex}"}"
+      "default_admin_password"          = "${local.icppassword}"
       "disabled_management_services"    = [
           "${var.va["nodes"] == 0 ? "va" : "" }"
       ]
@@ -91,5 +92,5 @@ output "ICP Admin Username" {
 }
 
 output "ICP Admin Password" {
-  value = "${var.icppassword}"
+  value = "${local.icppassword}"
 }
