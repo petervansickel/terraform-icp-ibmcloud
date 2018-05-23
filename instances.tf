@@ -51,8 +51,7 @@ data "ibm_network_vlan" "public_vlan" {
 
 
 locals {
-  # TODO only ubuntu for now
-  docker_package_uri = ""
+  docker_package_uri = "${var.docker_package_location != "" ? "/tmp/${basename(var.docker_package_location)}" : "" }"
   master_fs_ids = "${compact(
       concat(
         ibm_storage_file.fs_audit.*.id,
@@ -78,7 +77,7 @@ resource "random_id" "adminpassword" {
 resource "ibm_compute_vm_instance" "icp-boot" {
   hostname = "${var.deployment}-boot-${random_id.clusterid.hex}"
   domain = "${var.domain}"
-  os_reference_code = "${var.os_reference_code}"
+  os_reference_code = "${var.boot["os_reference_code"]}"
   datacenter = "${var.datacenter}"
 
   cores = "${var.boot["cpu_cores"]}"
@@ -123,6 +122,8 @@ packages:
   - unzip
   - python
   - pv
+rh_subscription:
+  enable-repo: rhel-7-server-extras-rpms
 users:
   - default
   - name: icpdeploy
@@ -151,6 +152,19 @@ write_files:
 runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
 EOF
+
+  provisioner "file" {
+    # copy the local docker installation package if it's set
+    connection {
+      host          = "${self.ipv4_address_private}"
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
+    }
+
+    source = "${var.docker_package_location != "" ? "${var.docker_package_location}" : "${path.module}/icp-install/README.md"}"
+    destination = "${local.docker_package_uri != "" ? "${local.docker_package_uri}" : "/dev/null" }"
+  }
 
   notes = "Boot machine for ICP deployment"
 }
@@ -235,6 +249,8 @@ resource "ibm_compute_vm_instance" "icp-master" {
 packages:
   - unzip
   - python
+rh_subscription:
+  enable-repo: rhel-7-server-extras-rpms
 users:
   - default
   - name: icpdeploy
@@ -274,6 +290,19 @@ EOF
   ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
 
   notes = "Master node for ICP deployment"
+
+  provisioner "file" {
+    # copy the local docker installation package if it's set
+    connection {
+      host          = "${self.ipv4_address_private}"
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
+    }
+
+    source = "${var.docker_package_location != "" ? "${var.docker_package_location}" : "${path.module}/icp-install/README.md"}"
+    destination = "${local.docker_package_uri != "" ? "${local.docker_package_uri}" : "/dev/null" }"
+  }
 
   # wait until cloud-init finishes
   provisioner "remote-exec" {
@@ -337,6 +366,8 @@ resource "ibm_compute_vm_instance" "icp-mgmt" {
 packages:
   - unzip
   - python
+rh_subscription:
+  enable-repo: rhel-7-server-extras-rpms
 users:
   - default
   - name: icpdeploy
@@ -362,6 +393,19 @@ EOF
   hourly_billing = "${var.mgmt["hourly_billing"]}"
 
   notes = "Management node for ICP deployment"
+
+  provisioner "file" {
+    # copy the local docker installation package if it's set
+    connection {
+      host          = "${self.ipv4_address_private}"
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
+    }
+
+    source = "${var.docker_package_location != "" ? "${var.docker_package_location}" : "${path.module}/icp-install/README.md"}"
+    destination = "${local.docker_package_uri != "" ? "${local.docker_package_uri}" : "/dev/null" }"
+  }
 
   # wait until cloud-init finishes
   provisioner "remote-exec" {
@@ -419,6 +463,8 @@ resource "ibm_compute_vm_instance" "icp-va" {
 packages:
   - unzip
   - python
+rh_subscription:
+  enable-repo: rhel-7-server-extras-rpms
 users:
   - default
   - name: icpdeploy
@@ -446,6 +492,19 @@ EOF
   ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
 
   notes = "Vulnerability Advisor node for ICP deployment"
+
+  provisioner "file" {
+    # copy the local docker installation package if it's set
+    connection {
+      host          = "${self.ipv4_address_private}"
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
+    }
+
+    source = "${var.docker_package_location != "" ? "${var.docker_package_location}" : "${path.module}/icp-install/README.md"}"
+    destination = "${local.docker_package_uri != "" ? "${local.docker_package_uri}" : "/dev/null" }"
+  }
 
   # wait until cloud-init finishes
   provisioner "remote-exec" {
@@ -503,6 +562,8 @@ resource "ibm_compute_vm_instance" "icp-proxy" {
 packages:
   - unzip
   - python
+rh_subscription:
+  enable-repo: rhel-7-server-extras-rpms
 users:
   - default
   - name: icpdeploy
@@ -530,6 +591,19 @@ EOF
   ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
 
   notes = "Proxy node for ICP deployment"
+
+  provisioner "file" {
+    # copy the local docker installation package if it's set
+    connection {
+      host          = "${self.ipv4_address_private}"
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
+    }
+
+    source = "${var.docker_package_location != "" ? "${var.docker_package_location}" : "${path.module}/icp-install/README.md"}"
+    destination = "${local.docker_package_uri != "" ? "${local.docker_package_uri}" : "/dev/null" }"
+  }
 
   # wait until cloud-init finishes
   provisioner "remote-exec" {
@@ -591,6 +665,8 @@ resource "ibm_compute_vm_instance" "icp-worker" {
 packages:
   - unzip
   - python
+rh_subscription:
+  enable-repo: rhel-7-server-extras-rpms
 users:
   - default
   - name: icpdeploy
@@ -618,6 +694,19 @@ EOF
   ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
 
   notes = "Worker node for ICP deployment"
+
+  provisioner "file" {
+    # copy the local docker installation package if it's set
+    connection {
+      host          = "${self.ipv4_address_private}"
+      user          = "icpdeploy"
+      private_key   = "${tls_private_key.installkey.private_key_pem}"
+      bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
+    }
+
+    source = "${var.docker_package_location != "" ? "${var.docker_package_location}" : "${path.module}/icp-install/README.md"}"
+    destination = "${local.docker_package_uri != "" ? "${local.docker_package_uri}" : "/dev/null" }"
+  }
 
   # wait until cloud-init finishes
   provisioner "remote-exec" {

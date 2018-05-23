@@ -32,15 +32,12 @@ crlinux_install() {
 }
 
 docker_install() {
-  echo "Install docker from ${package_location}"
-  sourcedir=/tmp/icp-docker
-
   if docker --version; then
     echo "Docker already installed. Exiting"
     return 0
   fi
 
-  if [[ "${OSLEVEL}" == "ubuntu" ]]; then
+  if [ -z "${package_location}" -a "${OSLEVEL}" == "ubuntu" ]; then
     # if we're on ubuntu, we can install docker-ce off of the repo
     apt-get install -y \
       apt-transport-https \
@@ -56,10 +53,22 @@ docker_install() {
       stable"
 
     apt-get update && apt-get install -y docker-ce
+  elif [ ! -z "${package_location}" ]; then
+    while [ ! -f "${package_location}" ]; do
+      echo "Waiting for docker package at ${package_location} ... "
+      sleep 1
+    done
 
+    echo "Install docker from ${package_location}"
+    chmod u+x "${package_location}"
+
+    # loop here until file provisioner is done copying the package
+    until ${package_location} --install; do
+      sleep 2
+    done
+  else
+    return 0
   fi
-
-  # TODO install the RHEL package
 
   partprobe
   lsblk
@@ -143,13 +152,10 @@ while getopts ":p:d:i:s:u:" arg; do
     esac
 done
 
-
 #Find Linux Distro
-if grep -q -i ubuntu /etc/*release
-  then
+OSLEVEL=other
+if grep -q -i ubuntu /etc/*release; then
     OSLEVEL=ubuntu
-  else
-    OSLEVEL=other
 fi
 echo "Operating System is $OSLEVEL"
 

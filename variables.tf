@@ -65,6 +65,7 @@ variable "boot" {
     disk_size         = "100" // GB
     docker_vol_size   = "100" // GB
     local_disk        = false
+    os_reference_code = "UBUNTU_16_64"
 
     network_speed     = "1000"
 
