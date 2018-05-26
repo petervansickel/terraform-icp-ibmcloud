@@ -27,7 +27,7 @@ Download the IBM Cloud Private docker and installation binaries and save them to
 ```
 sl_username = "<my username>"
 sl_api_key = "<my api key>"
-key_name = "my-ssh-key"
+key_name = ["my-ssh-key"]
 datacenter = "dal13"
 domain = "dal13.icp.com"
 os_reference_code = "UBUNTU_16_64"
@@ -106,7 +106,7 @@ Please see [variables.tf](variables.tf) for additional parameters.
 |----------------|------------|--------------|
 | `sl_username`   | yes          | Username for IBM Cloud infrastructure account |
 | `sl_api_key`   | yes          | API Key for IBM Cloud infrastructure account |
-| `key_name`   | no           | SSH key to add to `root` for all created VSI instances.  Note that the automation generates its own SSH keys so these are additional keys that can be used for access |
+| `key_name`   | no           | Array of SSH keys to add to `root` for all created VSI instances.  Note that the automation generates its own SSH keys so these are additional keys that can be used for access |
 | `datacenter`   | yes           | Datacenter to place all objects in |
 | `os_reference_code`   | yes           | OS to install on the VSIs.  Use the [API](https://api.softlayer.com/rest/v3/SoftLayer_Virtual_Guest_Block_Device_Template_Group/getVhdImportSoftwareDescriptions.json?objectMask=referenceCode) to determine valid values. Only Ubuntu 16.04 was tested. Note that the boot node OS can be specified separately (defaults to `UBUNTU_16_64` to save licensing costs). |
 | `icp_inception_image` | yes | The ICP installer image to use.  This corresponds to the version of ICP to install. |

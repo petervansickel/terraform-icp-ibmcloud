@@ -46,7 +46,8 @@ module "icpprovision" {
       "calico_ip_autodetection_method"  = "interface=eth0"
       "default_admin_password"          = "${local.icppassword}"
       "disabled_management_services"    = [
-          "${var.va["nodes"] == 0 ? "va" : "" }"
+          "${var.va["nodes"] == 0 ? "va" : "" }",
+          "${var.va["nodes"] == 0 ? "vulnerability-advisor" : "" }"
       ]
       "image_repo"                      = "${dirname(local.image)}"
       "private_registry_enabled"        = "${local.registry_creds != "" ? "true" : "false" }"

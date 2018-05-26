@@ -32,11 +32,6 @@ resource "tls_self_signed_cert" "registry_cert" {
   ]
 }
 
-data "ibm_compute_ssh_key" "public_key" {
-  count = "${var.key_name != "" ? 1 : 0}"
-  label = "${var.key_name}"
-}
-
 data "ibm_network_vlan" "private_vlan" {
   count = "${var.private_vlan_router_hostname != "" ? 1 : 0}"
   router_hostname = "${var.private_vlan_router_hostname}.${var.datacenter}"
@@ -49,6 +44,10 @@ data "ibm_network_vlan" "public_vlan" {
   number = "${var.public_vlan_number}"
 }
 
+data "ibm_compute_ssh_key" "public_key" {
+  count = "${length(var.key_name)}"
+  label = "${element(var.key_name, count.index)}"
+}
 
 locals {
   docker_package_uri = "${var.docker_package_location != "" ? "/tmp/${basename(var.docker_package_location)}" : "" }"
@@ -77,7 +76,9 @@ resource "random_id" "adminpassword" {
 resource "ibm_compute_vm_instance" "icp-boot" {
   hostname = "${var.deployment}-boot-${random_id.clusterid.hex}"
   domain = "${var.domain}"
-  os_reference_code = "${var.boot["os_reference_code"]}"
+
+  os_reference_code = "${var.os_reference_code}"
+
   datacenter = "${var.datacenter}"
 
   cores = "${var.boot["cpu_cores"]}"
@@ -114,7 +115,7 @@ resource "ibm_compute_vm_instance" "icp-boot" {
 
   # Permit an ssh loging for the key owner.
   # You an have multiple keys defined.
-  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.*.id}"]
 
   user_metadata = <<EOF
 #cloud-config
@@ -167,6 +168,13 @@ EOF
   }
 
   notes = "Boot machine for ICP deployment"
+
+  lifecycle {
+    ignore_changes = [
+      "private_vlan_id",
+      "public_vlan_id"
+    ]
+  }
 }
 
 resource "null_resource" "image_load" {
@@ -287,9 +295,16 @@ EOF
 
   # Permit an ssh loging for the key owner.
   # You an have multiple keys defined.
-  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.*.id}"]
 
   notes = "Master node for ICP deployment"
+
+  lifecycle {
+    ignore_changes = [
+      "private_vlan_id",
+      "public_vlan_id"
+    ]
+  }
 
   provisioner "file" {
     # copy the local docker installation package if it's set
@@ -326,7 +341,6 @@ resource "ibm_compute_vm_instance" "icp-mgmt" {
   domain = "${var.domain}"
 
   os_reference_code = "${var.os_reference_code}"
-
   datacenter = "${var.datacenter}"
 
   cores = "${var.mgmt["cpu_cores"]}"
@@ -359,7 +373,7 @@ resource "ibm_compute_vm_instance" "icp-mgmt" {
 
   # Permit an ssh loging for the key owner.
   # You an have multiple keys defined.
-  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.*.id}"]
 
   user_metadata = <<EOF
 #cloud-config
@@ -394,6 +408,13 @@ EOF
 
   notes = "Management node for ICP deployment"
 
+  lifecycle {
+    ignore_changes = [
+      "private_vlan_id",
+      "public_vlan_id"
+    ]
+  }
+
   provisioner "file" {
     # copy the local docker installation package if it's set
     connection {
@@ -427,7 +448,9 @@ resource "ibm_compute_vm_instance" "icp-va" {
 
   hostname = "${format("${lower(var.deployment)}-va%02d-${random_id.clusterid.hex}", count.index + 1) }"
   domain = "${var.domain}"
+
   os_reference_code = "${var.os_reference_code}"
+
   datacenter = "${var.datacenter}"
   cores = "${var.va["cpu_cores"]}"
   memory = "${var.va["memory"]}"
@@ -489,9 +512,15 @@ EOF
 
   # Permit an ssh loging for the key owner.
   # You an have multiple keys defined.
-  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.*.id}"]
 
   notes = "Vulnerability Advisor node for ICP deployment"
+  lifecycle {
+    ignore_changes = [
+      "private_vlan_id",
+      "public_vlan_id"
+    ]
+  }
 
   provisioner "file" {
     # copy the local docker installation package if it's set
@@ -526,7 +555,9 @@ resource "ibm_compute_vm_instance" "icp-proxy" {
 
   hostname = "${format("${lower(var.deployment)}-proxy%02d-${random_id.clusterid.hex}", count.index + 1) }"
   domain = "${var.domain}"
+
   os_reference_code = "${var.os_reference_code}"
+
   datacenter = "${var.datacenter}"
   cores = "${var.proxy["cpu_cores"]}"
   memory = "${var.proxy["memory"]}"
@@ -588,9 +619,16 @@ EOF
 
   # Permit an ssh loging for the key owner.
   # You an have multiple keys defined.
-  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.*.id}"]
 
   notes = "Proxy node for ICP deployment"
+
+  lifecycle {
+    ignore_changes = [
+      "private_vlan_id",
+      "public_vlan_id"
+    ]
+  }
 
   provisioner "file" {
     # copy the local docker installation package if it's set
@@ -691,9 +729,16 @@ EOF
 
   # Permit an ssh loging for the key owner.
   # You an have multiple keys defined.
-  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.id}"]
+  ssh_key_ids = ["${data.ibm_compute_ssh_key.public_key.*.id}"]
 
   notes = "Worker node for ICP deployment"
+
+  lifecycle {
+    ignore_changes = [
+      "private_vlan_id",
+      "public_vlan_id"
+    ]
+  }
 
   provisioner "file" {
     # copy the local docker installation package if it's set

@@ -78,7 +78,7 @@ docker_install() {
   if [ "${storage_driver}" == "devicemapper" ]; then
     # check if loop lvm mode is enabled
     if [ -z `docker info | grep 'loop file'` ]; then
-      echo "Direct-lvm mode is already configured."
+      echo "Direct-lvm mode is configured."
       return 0
     fi
 
@@ -98,17 +98,18 @@ docker_install() {
   ]
 }
 EOF
-elif [ ! -z "${docker_disk}" ]; then
-    echo "Setting up devicemapper with direct-lvm mode using ${docker_disk}..."
+  elif [ ! -z "${docker_disk}" ]; then
+    echo "Setting up ${docker_disk} and mounting at /var/lib/docker ..."
 
-    cat > /etc/docker/daemon.json <<EOF
-{
-  "storage-driver": "devicemapper",
-  "storage-opts": [
-    "dm.directlvm_device=${docker_disk}"
-  ]
-}
-EOF
+    sudo mkdir -p /var/lib/docker
+    sudo parted -s -a optimal ${docker_disk} mklabel gpt -- mkpart primary ext4 1 -1
+
+    sudo partprobe
+
+    sudo mkfs.ext4 ${docker_disk}1
+    echo "${docker_disk}1  /var/lib/docker   ext4  defaults   0 0" | sudo tee -a /etc/fstab
+
+    sudo mount -a
   fi
 
   systemctl restart docker
