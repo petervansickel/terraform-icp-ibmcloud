@@ -6,7 +6,7 @@ variable "sl_api_key" { description = "IBM Cloud (aka SoftLayer) API key." }
 
 variable "key_name" {
   description = "Name or reference of SSH key to provision IBM Cloud instances with"
-  default = ""
+  default = []
 }
 
 ##### Common VM specifications ######
