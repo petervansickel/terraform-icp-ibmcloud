@@ -161,7 +161,7 @@ You will now need to create jump server to upload the initial files into IBM Clo
 Once the files have been copied from your local system to your jump server, you can now mount and copy the files into your file storage.
 
 1.  On the Jump Server, create a mount point directory on the system.  This is generally done underneath the `/mnt` parent directory, similar to `mkdir /mnt/filestorage`.
-2.  Recalling the **Mount Point** from the earlier File Storage details screen, you can now mount the file storage to the jump server via `mnt {File Storage Mount Point} /mnt/filestorage`.
+2.  Recalling the **Mount Point** from the earlier File Storage details screen, you can now mount the file storage to the jump server via `mount {File Storage Mount Point} /mnt/filestorage`.
 3.  Validate the mount succeeded by running a simple `touch /mnt/filestorage/test.txt` command.
 4.  Create any neccessary sub-directories in `/mnt/filestorage` for how you would like to arrange your stored binaries.
 5.  Copy the files into the mounted directory.  Due to the nature of the large files and across network distances, the normal Unix copy command, `cp`, isn't the most preferred option.  Instead you can use `rsync` to see file status as items are copied over.  You can run this command similar to the normal copy, but with the benefit of receiving progress indicator updates.  
