@@ -129,7 +129,7 @@ Please see [variables.tf](variables.tf) for additional parameters.
 1.  From the [IBM Cloud Console](https://console.bluemix.net), select [Infrastructure](https://control.bluemix.net) from the left sidebar menu.
 2.  In the IBM Cloud Infrastructure page, expand the **Storage** dropdown and select [File Storage](https://control.bluemix.net/storage/file).
 3.  Select [Order File Storage](https://control.bluemix.net/storage/order?storageType=FILE) from the upper-right side of the window.
-4.  Select the datacenter most appropriate for your installation, a minimum of at least 20GB of storage size, and the desired amount of IOPS (_generally 0.25 or 2 are sufficient_). Then click **Place Order**.
+4.  Select the datacenter which you will deploy your IBM Cloud Private cluster into, a minimum of at least 20GB of storage size, and the desired amount of IOPS (_generally 0.25 or 2 are sufficient_). Then click **Place Order**.
 5.  Once created, click on your File Storage instance from the list shown at https://control.bluemix.net/storage/file.
 6.  Make note of the **Mount Point** field as this will be used later on.
 7.  Click on the **Actions** dropdown from the upper-right and select **Authorize Host**.
@@ -142,17 +142,19 @@ You will now need to create jump server to upload the initial files into IBM Clo
 
 1.  Go to the [Device List](https://control.bluemix.net/devices) and click [Order Devices](https://console.bluemix.net/catalog/).
 2.  Select to create a **Virtual Server** and then a **Public Virtual Server**.
-3.  Select a Location that matches as closely as possible to the Datacenter selected for your previously created File Storage.
+3.  Select a Location that matches as closely as possible to the Datacenter selected for your previously-created File Storage.
 4.  The **Balanced B1.2x4** profile is the minimum recommended option for the jump server in this case.
 5.  You will want to add an SSH Key to the system to login later on. 
 6.  Ubuntu is the preferred option for Linux distributions, but others are acceptable as well.  However, licensing may be an issue with other Linux distributions.
 7.  Select **100 GB** of SAN for the **Attached Storage Disks**.
-8.  For both the **Private Security Group** and the **Public Security Group** you will want to check **allow_ssh** to copy files into the system.
+8.  For the **Private Security Group** options, you will want to ensure that **allow_ssh**, **allow_outbound**, and **allow_all** are selected for necessary access to internal Linux distribution update mirrors.
+9.  For the **Public Security Group** option, you will want to check **allow_ssh** to copy files into the system.
 9.  Click **Provision**.
 
 #### Copy Tarball into IBM Cloud
 
-1.  Once the Jump Server has been provisioned, verify that you can SSH into the system using the specified SSH key at instance provisioning time and the associated username (generally **root**).
+1.  You will need to download the appropriate version of the IBM Cloud Private binaries, either externally from Passport Advantage or internally from Extreme Leverage. Once you have downloaded them, the files named `ibm-cloud-private-x86_64-3.1.0.tar.gz` and `icp-docker-18.03.1_x86_64` (or specific to your desired version to be installed) can be placed in the `icp-install` directory.
+2.  Once the Jump Server has been provisioned, verify that you can SSH into the system using the specified SSH key at instance provisioning time and the associated username (generally **root**).
 2.  Once you have verified SSH signin, now copy the files you have in the `icp-install` directory to the remote machine via `scp`.  Note you will need to create the remote directory that you specify in the `scp` command.  
         `$ scp -r -i ~/.ssh/your_ssh_key icp-install root@{Jump_Server_IP_Address}:/root/icp-install`
 
@@ -160,11 +162,14 @@ You will now need to create jump server to upload the initial files into IBM Clo
 
 Once the files have been copied from your local system to your jump server, you can now mount and copy the files into your file storage.
 
-1.  On the Jump Server, create a mount point directory on the system.  This is generally done underneath the `/mnt` parent directory, similar to `mkdir /mnt/filestorage`.
-2.  Recalling the **Mount Point** from the earlier File Storage details screen, you can now mount the file storage to the jump server via `mount {File Storage Mount Point} /mnt/filestorage`.
-3.  Validate the mount succeeded by running a simple `touch /mnt/filestorage/test.txt` command.
-4.  Create any neccessary sub-directories in `/mnt/filestorage` for how you would like to arrange your stored binaries.
-5.  Copy the files into the mounted directory.  Due to the nature of the large files and across network distances, the normal Unix copy command, `cp`, isn't the most preferred option.  Instead you can use `rsync` to see file status as items are copied over.  You can run this command similar to the normal copy, but with the benefit of receiving progress indicator updates.  
+1.  On the Jump Server, ensure that the necessary packages are installed to support NFS mounts:
+  1.  For Ubuntu servers, run `sudo apt install -y nfs-common`.
+  2.  For RHEL servers, run `sudo yum -y install nfs-utils`.
+2.  Create a mount point directory on the system.  This is generally done underneath the `/mnt` parent directory, similar to `mkdir /mnt/filestorage`.
+3.  Recalling the **Mount Point** from the earlier File Storage details screen, you can now mount the file storage to the jump server via `mount {File Storage Mount Point} /mnt/filestorage`.
+4.  Validate the mount succeeded by running a simple `touch /mnt/filestorage/test.txt` command.
+5.  Create any neccessary sub-directories in `/mnt/filestorage` for how you would like to arrange your stored binaries.
+6.  Copy the files into the mounted directory.  Due to the nature of the large files and across network distances, the normal Unix copy command, `cp`, isn't the most preferred option.  Instead you can use `rsync` to see file status as items are copied over.  You can run this command similar to the normal copy, but with the benefit of receiving progress indicator updates.  
         `$ rsync -ahr --progress /root/icp-install /mnt/filestorage/icp-files`
 
 #### Update terraform.tfvars
