@@ -1,9 +1,18 @@
-# Leave behind terrarform execution artifacts
-privatekey.pem
-.terraform
+#  Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# .tfvars files
+*.tfvars
+
+# generated key files
+*.pem
+
+
 logs/*.*
-
-
 # For mac users
 .history
 .DS_Store
