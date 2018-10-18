@@ -59,12 +59,12 @@ variable "boot" {
   type = "map"
 
   default = {
-    cpu_cores         = "2"
-    memory            = "2048"
+    cpu_cores         = "4"
+    memory            = "4096"
 
     disk_size         = "100" // GB
     docker_vol_size   = "100" // GB
-    local_disk        = false
+    local_disk        = true
     os_reference_code = "UBUNTU_16_64"
 
     network_speed     = "1000"
@@ -77,10 +77,10 @@ variable "master" {
   type = "map"
 
   default = {
-    nodes             = "1"
+    nodes             = "3"
 
-    cpu_cores         = "4"
-    memory            = "8192"
+    cpu_cores         = "8"
+    memory            = "16384"
 
     disk_size         = "100" // GB
     docker_vol_size   = "100" // GB
@@ -99,7 +99,7 @@ variable "mgmt" {
     nodes       = "1"
 
     cpu_cores   = "4"
-    memory      = "8192"
+    memory      = "16384"
 
     disk_size         = "100" // GB
     docker_vol_size   = "100" // GB
@@ -115,7 +115,7 @@ variable "proxy" {
   type = "map"
 
   default = {
-    nodes       = "1"
+    nodes       = "3"
 
     cpu_cores   = "2"
     memory      = "4096"
@@ -204,7 +204,15 @@ variable "icppassword" {
 
 variable "icp_inception_image" {
   description = "ICP image to use for installation"
-  default     = "ibmcom/icp-inception:2.1.0.2-ee"
+  default     = "ibmcom/icp-inception-amd64:3.1.0-ee"
+}
+
+variable "registry_username" {
+  default   = ""
+}
+
+variable "registry_password" {
+  default   = ""
 }
 
 variable "network_cidr" {
@@ -215,4 +223,12 @@ variable "network_cidr" {
 variable "service_network_cidr" {
   description = "Service network CIDR "
   default     = "172.21.0.0/16"
+}
+
+# The following services can be disabled for 3.1
+# custom-metrics-adapter, image-security-enforcement, istio, metering, monitoring, service-catalog, storage-minio, storage-glusterfs, and vulnerability-advisor
+variable "disabled_management_services" {
+  description = "List of management services to disable"
+  type        = "list"
+  default     = ["istio", "vulnerability-advisor", "storage-glusterfs", "storage-minio"]
 }
