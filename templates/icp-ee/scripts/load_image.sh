@@ -8,11 +8,24 @@ while getopts ":p:r:c:" arg; do
       r)
         registry=${OPTARG}
         ;;
-      c)
+      u)
+        regusername=${OPTARG}
+        ;;
+      p)
         regpassword=${OPTARG}
         ;;
     esac
 done
+
+if [ -n "${registry}" -a -n "${regusername}" -a -n "${regpassword}" ]; then
+  # docker login external registry as icpdeploy
+  sudo -u icpdeploy docker login -u ${regusername} -p ${regpassword} ${registry}
+fi
+
+if [ -z "${package_location}" ]; then
+  # no image file, do nothing
+  exit 0
+fi
 
 # find my private IP address, which will be on the interface the default route is configured on
 myip=`ip route get 10.0.0.11 | awk 'NR==1 {print $NF}'`
@@ -61,7 +74,6 @@ elif [[ "${package_location:0:3}" == "nfs" ]]; then
 else
   # This must be uploaded from local file, terraform should have copied it to /tmp
   image_file="/tmp/$(basename ${package_location})"
-
 fi
 
 echo "Unpacking ${image_file} ..."
@@ -100,7 +112,7 @@ sudo docker images | grep -v REPOSITORY | grep -v ${registry} | awk '{print $1 "
 sudo docker images | grep ${registry} | grep "amd64" | awk '{gsub("-amd64", "") ; print $1 "-amd64:" $2 " " $1 ":" $2 }' | xargs -n2  sh -c 'sudo docker tag $1 $2' argv0
 
 # Push all images and tags to private docker registry
-sudo docker login --password ${regpassword} --username icpdeploy ${registry}
+sudo -u icpdeploy docker login --password ${regpassword} --username icpdeploy ${registry}
 while read image; do
   echo "Pushing ${image}"
   sudo docker push ${image} >> /tmp/imagepush.log

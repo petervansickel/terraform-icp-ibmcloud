@@ -1,6 +1,4 @@
 provider "ibm" {
-    softlayer_username = "${var.sl_username}"
-    softlayer_api_key = "${var.sl_api_key}"
 }
 
 locals {
@@ -25,11 +23,14 @@ locals {
     #######
 
     # If we stand up a image registry what will the registry_server name and namespace be
-    registry_server = "${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}"
+    registry_server = "${var.registry_server != "" ? "${var.registry_server}" : "${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}"}"
     namespace       = "${dirname(var.icp_inception_image)}" # This will typically return ibmcom
 
     # The final image repo will be either interpolated from what supplied in icp_inception_image or
-    image_repo      = "${var.image_location == "" ? dirname(var.icp_inception_image) : "${local.registry_server}/${local.namespace}"}"
+    image_repo      = "${var.registry_server == "" ? dirname(var.icp_inception_image) : "${local.registry_server}/${local.namespace}"}"
+    icp-version     = "${format("%s%s%s", "${local.docker_username != "" ? "${local.docker_username}:${local.docker_password}@" : ""}",
+                        "${var.registry_server != "" ? "${var.registry_server}/" : ""}",
+                        "${var.icp_inception_image}")}"
 
     # If we're using external registry we need to be supplied registry_username and registry_password
     docker_username = "${var.registry_username != "" ? var.registry_username : "icpdeploy"}"
