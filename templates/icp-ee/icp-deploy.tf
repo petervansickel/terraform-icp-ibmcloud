@@ -5,7 +5,7 @@
 ##########################################
 resource "null_resource" "image_copy" {
   # Only copy image from local location if not available remotely
-  count = "${var.image_location != "" && ! (substr(var.image_location, 0, 3) != "nfs"  || substr(var.image_location, 0, 4) != "http") ? 1 : 0}"
+  count = "${var.image_location != "" ? 1 : 0}"
 
   provisioner "file" {
     connection {
@@ -22,9 +22,7 @@ resource "null_resource" "image_copy" {
 
 resource "null_resource" "image_load" {
   # Only do an image load if we have provided a location. Presumably if not we'll be loading from private registry server
-  count = "${var.image_location != "" ? 1 : 0}"
   depends_on = ["null_resource.image_copy"]
-
 
   connection {
     host          = "${ibm_compute_vm_instance.icp-boot.ipv4_address_private}"
@@ -43,12 +41,47 @@ resource "null_resource" "image_load" {
     # We need to wait for cloud init to finish it's boot sequence.
     inline = [
       "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done",
+      "export REGISTRY_USERNAME=${local.docker_username}",
+      "export REGISTRY_PASSWORD=${local.docker_password}",
       "sudo mv /tmp/load_image.sh /opt/ibm/scripts/",
       "sudo chmod a+x /opt/ibm/scripts/load_image.sh",
-      "/opt/ibm/scripts/load_image.sh -p ${var.image_location} -r ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain} -c ${local.docker_password}",
+      "/opt/ibm/scripts/load_image.sh ${var.image_location != "" ? "-p ${var.image_location}" : ""} -r ${local.registry_server} -c ${local.docker_password}",
       "sudo touch /opt/ibm/.imageload_complete"
     ]
   }
+}
+
+resource "null_resource" "cert_copy" {
+  # copy the CA certs, if they exist
+  depends_on = ["null_resource.image_load"]
+
+  connection {
+    host          = "${ibm_compute_vm_instance.icp-boot.ipv4_address_private}"
+    user          = "icpdeploy"
+    private_key   = "${tls_private_key.installkey.private_key_pem}"
+    bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
+  }
+
+  provisioner "remote-exec" {
+    # We need to wait for cloud init to finish it's boot sequence.
+    inline = [
+      "mkdir -p /tmp/cfc-certs"
+    ]
+  }
+
+  provisioner "file" {
+    source = "${path.module}/cfc-certs/"
+    destination = "/tmp/cfc-certs"
+  }
+
+  provisioner "remote-exec" {
+    # We need to wait for cloud init to finish it's boot sequence.
+    inline = [
+      "sudo mkdir -p /opt/ibm/cluster",
+      "sudo mv /tmp/cfc-certs /opt/ibm/cluster"
+    ]
+  }
+
 }
 
 ##################################
@@ -62,14 +95,28 @@ module "icpprovision" {
     bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
     icp-host-groups = {
         master = ["${ibm_compute_vm_instance.icp-master.*.ipv4_address_private}"]
-        proxy = ["${ibm_compute_vm_instance.icp-proxy.*.ipv4_address_private}"]
+        proxy = "${slice(concat(ibm_compute_vm_instance.icp-proxy.*.ipv4_address_private,
+                                ibm_compute_vm_instance.icp-master.*.ipv4_address_private),
+                         var.proxy["nodes"] > 0 ? 0 : length(ibm_compute_vm_instance.icp-proxy.*.ipv4_address_private),
+                         var.proxy["nodes"] > 0 ? length(ibm_compute_vm_instance.icp-proxy.*.ipv4_address_private) :
+                                                  length(ibm_compute_vm_instance.icp-proxy.*.ipv4_address_private) +
+                                                    length(ibm_compute_vm_instance.icp-master.*.ipv4_address_private))}"
+
         worker = ["${ibm_compute_vm_instance.icp-worker.*.ipv4_address_private}"]
-        management = ["${ibm_compute_vm_instance.icp-mgmt.*.ipv4_address_private}"]
+
+        // make the master nodes managements nodes if we don't have any specified
+        management = "${slice(concat(ibm_compute_vm_instance.icp-mgmt.*.ipv4_address_private,
+                                     ibm_compute_vm_instance.icp-master.*.ipv4_address_private),
+                              var.mgmt["nodes"] > 0 ? 0 : length(ibm_compute_vm_instance.icp-mgmt.*.ipv4_address_private),
+                              var.mgmt["nodes"] > 0 ? length(ibm_compute_vm_instance.icp-mgmt.*.ipv4_address_private) :
+                                                      length(ibm_compute_vm_instance.icp-mgmt.*.ipv4_address_private) +
+                                                        length(ibm_compute_vm_instance.icp-master.*.ipv4_address_private))}"
+
         va = ["${ibm_compute_vm_instance.icp-va.*.ipv4_address_private}"]
     }
 
     # Provide desired ICP version to provision
-    icp-version = "${var.icp_inception_image}"
+    icp-version = "${local.icp-version}"
 
     /* Workaround for terraform issue #10857
      When this is fixed, we can work this out automatically */
@@ -83,7 +130,7 @@ module "icpprovision" {
       "service_cluster_ip_range"        = "${var.service_network_cidr}"
       "cluster_lb_address"              = "${ibm_lbaas.master-lbaas.vip}"
       "proxy_lb_address"                = "${ibm_lbaas.proxy-lbaas.vip}"
-      "cluster_CA_domain"               = "${ibm_lbaas.master-lbaas.vip}"
+      "cluster_CA_domain"               = "${var.cluster_cname != "" ? "${var.cluster_cname}" : "${ibm_lbaas.master-lbaas.vip}"}"
       "cluster_name"                    = "${var.deployment}"
       "calico_ip_autodetection_method"  = "interface=eth0"
 
@@ -93,7 +140,8 @@ module "icpprovision" {
       # This is the list of disabled management services
       "management_services"             = "${local.disabled_management_services}"
 
-      "private_registry_enabled"        = "true"
+      "private_registry_enabled"        = "${var.registry_server != "" ? "true" : "false" }"
+      "private_registry_server"         = "${local.registry_server}"
       "image_repo"                      = "${local.image_repo}" # Will either be our private repo or external repo
       "docker_username"                 = "${local.docker_username}" # Will either be username generated by us or supplied by user
       "docker_password"                 = "${local.docker_password}" # Will either be username generated by us or supplied by user

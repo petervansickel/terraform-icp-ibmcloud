@@ -159,7 +159,8 @@ resource "ibm_compute_vm_instance" "icp-master" {
 
   private_security_group_ids = [
     "${ibm_security_group.cluster_private.id}",
-    "${ibm_security_group.master_group.id}"
+    "${ibm_security_group.master_group.id}",
+    "${var.proxy["nodes"] == 0 ? "${ibm_security_group.proxy_group.id}" : "0"}"
   ]
 
   tags = [
@@ -236,6 +237,7 @@ EOF
   # wait until cloud-init finishes
   provisioner "remote-exec" {
     connection {
+      host          = "${self.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
       bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
@@ -342,6 +344,7 @@ EOF
   # wait until cloud-init finishes
   provisioner "remote-exec" {
     connection {
+      host          = "${self.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
       bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
@@ -446,6 +449,7 @@ EOF
   # wait until cloud-init finishes
   provisioner "remote-exec" {
     connection {
+      host          = "${self.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
       bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
@@ -551,6 +555,7 @@ EOF
   # wait until cloud-init finishes
   provisioner "remote-exec" {
     connection {
+      host          = "${self.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
       bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
@@ -590,10 +595,14 @@ resource "ibm_compute_vm_instance" "icp-worker" {
   ]
 
   local_disk = "${var.worker["local_disk"]}"
-  disks = [
-    "${var.worker["disk_size"]}",
-    "${var.worker["docker_vol_size"]}"
-  ]
+  disks = ["${compact(
+    concat(
+      list(
+        var.worker["disk_size"],
+        var.worker["docker_vol_size"],
+        var.worker["additional_disk"] != 0 ? "${var.worker["additional_disk"]}" : "")
+    ))}"]
+
 
   hourly_billing = "${var.worker["hourly_billing"]}"
   tags = [
@@ -658,6 +667,7 @@ EOF
   # wait until cloud-init finishes
   provisioner "remote-exec" {
     connection {
+      host          = "${self.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
       bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
