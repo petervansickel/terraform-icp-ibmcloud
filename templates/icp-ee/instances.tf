@@ -86,14 +86,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/registry/registry-cert.pem
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
-  - path: /etc/registry/registry-key.pem
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_private_key.registry_key.private_key_pem}")}
 runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
 EOF
@@ -187,10 +179,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 mounts:
 ${var.master["nodes"] > 1 ? "
   - ['${ibm_storage_file.fs_registry.mountpoint}', /var/lib/registry, nfs, defaults, 0, 0]
@@ -308,10 +296,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
@@ -412,10 +396,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
@@ -517,10 +497,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
@@ -629,10 +605,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts

@@ -41,11 +41,9 @@ resource "null_resource" "image_load" {
     # We need to wait for cloud init to finish it's boot sequence.
     inline = [
       "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done",
-      "export REGISTRY_USERNAME=${local.docker_username}",
-      "export REGISTRY_PASSWORD=${local.docker_password}",
       "sudo mv /tmp/load_image.sh /opt/ibm/scripts/",
       "sudo chmod a+x /opt/ibm/scripts/load_image.sh",
-      "/opt/ibm/scripts/load_image.sh ${var.image_location != "" ? "-p ${var.image_location}" : ""} -r ${local.registry_server} -c ${local.docker_password}",
+      "/opt/ibm/scripts/load_image.sh ${var.image_location != "" ? "-p ${var.image_location}" : ""} -r ${local.registry_server} -u ${local.docker_username} -c ${local.docker_password}",
       "sudo touch /opt/ibm/.imageload_complete"
     ]
   }
