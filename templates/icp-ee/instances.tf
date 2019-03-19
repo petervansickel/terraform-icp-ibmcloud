@@ -149,11 +149,22 @@ resource "ibm_compute_vm_instance" "icp-master" {
     ibm_security_group.cluster_public.*.id
   ))}"]
 
-  private_security_group_ids = [
-    "${ibm_security_group.cluster_private.id}",
-    "${ibm_security_group.master_group.id}",
-    "${var.proxy["nodes"] == 0 ? "${ibm_security_group.proxy_group.id}" : "0"}"
-  ]
+  # ugly code alert - convert lists to comma-separated strings
+  # concatenate the lists together so we can use conditionals
+  private_security_group_ids = ["${compact(
+    split(",", join(",", 
+      split(",", 
+        format("%s,%s", 
+          join(",", concat(
+            ibm_security_group.cluster_private.*.id,
+            ibm_security_group.master_group.*.id
+          )),
+          "${var.proxy["nodes"] == 0 ? 
+            join(",", ibm_security_group.proxy_group.*.id) : ""}"
+        )
+      )
+    ))
+  )}"]
 
   tags = [
     "${var.deployment}",
