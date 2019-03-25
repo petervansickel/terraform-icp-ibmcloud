@@ -121,7 +121,6 @@ resource "ibm_security_group_rule" "allow_port_80" {
   protocol = "tcp"
   port_range_min = 80
   port_range_max = 80
-  # remote_ip = "${ibm_compute_vm_instance.icp-proxy.0.private_subnet}"
   security_group_id = "${ibm_security_group.proxy_group.id}"
   # Sometimes LBaaS can be placed on a different subnet
   remote_ip = "0.0.0.0/0"
@@ -134,7 +133,6 @@ resource "ibm_security_group_rule" "allow_port_443" {
   protocol = "tcp"
   port_range_min = 443
   port_range_max = 443
-  # remote_ip = "${ibm_compute_vm_instance.icp-proxy.0.private_subnet}"
   security_group_id = "${ibm_security_group.proxy_group.id}"
   # Sometimes LBaaS can be placed on a different subnet
   remote_ip = "0.0.0.0/0"

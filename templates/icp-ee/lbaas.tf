@@ -1,8 +1,10 @@
 resource "ibm_lbaas" "proxy-lbaas" {
   name = "${var.deployment}-proxy-${random_id.clusterid.hex}"
-  description = "load balancer for proxy"
+  description = "load balancer for ICP proxy"
 
-  subnets = ["${ibm_compute_vm_instance.icp-proxy.0.private_subnet_id}"]
+  subnets = ["${element(concat(ibm_compute_vm_instance.icp-proxy.*.private_subnet_id,
+                             ibm_compute_vm_instance.icp-master.*.private_subnet_id),
+                0)}"]
   protocols = [
     {
       frontend_protocol = "TCP"
@@ -22,13 +24,13 @@ resource "ibm_lbaas" "proxy-lbaas" {
 }
 
 resource "ibm_lbaas_server_instance_attachment" "icp_proxy" {
-  count = "${var.proxy["nodes"]}"
-  private_ip_address = "${element(ibm_compute_vm_instance.icp-proxy.*.ipv4_address_private, count.index)}"
+  count = "${var.proxy["nodes"] > 0 ? var.proxy["nodes"] : var.master["nodes"]}"
+  private_ip_address = "${element(concat(ibm_compute_vm_instance.icp-proxy.*.ipv4_address_private, ibm_compute_vm_instance.icp-master.*.ipv4_address_private), count.index)}"
   lbaas_id = "${ibm_lbaas.proxy-lbaas.id}"
 }
 
 resource "ibm_lbaas" "master-lbaas" {
-  name = "${var.deployment}-${random_id.clusterid.hex}"
+  name = "${var.deployment}-mastr-${random_id.clusterid.hex}"
   description = "load balancer for ICP master"
 
   subnets = ["${ibm_compute_vm_instance.icp-master.0.private_subnet_id}"]
@@ -70,6 +72,8 @@ resource "ibm_lbaas" "master-lbaas" {
     }
   ]
 }
+
+
 
 resource "ibm_lbaas_server_instance_attachment" "icp_master" {
   count = "${var.master["nodes"]}"

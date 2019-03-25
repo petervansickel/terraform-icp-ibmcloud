@@ -1,6 +1,4 @@
 provider "ibm" {
-    softlayer_username = "${var.sl_username}"
-    softlayer_api_key = "${var.sl_api_key}"
 }
 
 locals {
@@ -25,15 +23,18 @@ locals {
     #######
 
     # If we stand up a image registry what will the registry_server name and namespace be
-    registry_server = "${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}"
+    registry_server = "${var.registry_server != "" ? "${var.registry_server}" : "${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}"}"
     namespace       = "${dirname(var.icp_inception_image)}" # This will typically return ibmcom
 
     # The final image repo will be either interpolated from what supplied in icp_inception_image or
-    image_repo      = "${var.image_location == "" ? dirname(var.icp_inception_image) : "${local.registry_server}/${local.namespace}"}"
+    image_repo      = "${var.registry_server == "" ? "" : "${local.registry_server}/${local.namespace}"}"
+    icp-version     = "${format("%s%s%s", "${local.docker_username != "" ? "${local.docker_username}:${local.docker_password}@" : ""}",
+                        "${var.registry_server != "" ? "${var.registry_server}/" : ""}",
+                        "${var.icp_inception_image}")}"
 
     # If we're using external registry we need to be supplied registry_username and registry_password
-    docker_username = "${var.registry_username != "" ? var.registry_username : "icpdeploy"}"
-    docker_password = "${var.registry_password != "" ? var.registry_password : "${local.icppassword}"}"
+    docker_username = "${var.registry_username != "" ? var.registry_username : ""}"
+    docker_password = "${var.registry_password != "" ? var.registry_password : ""}"
 
     # This is just to have a long list of disabled items to use in icp-deploy.tf
     disabled_list = "${list("disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled","disabled")}"
@@ -50,32 +51,6 @@ resource "random_id" "clusterid" {
 resource "tls_private_key" "installkey" {
   algorithm   = "RSA"
 }
-
-# Create certificates for secure docker registry
-# Needed if we are supplied a tarball.
-resource "tls_private_key" "registry_key" {
-  algorithm = "RSA"
-  rsa_bits = "4096"
-}
-
-resource "tls_self_signed_cert" "registry_cert" {
-  key_algorithm   = "RSA"
-  private_key_pem = "${tls_private_key.registry_key.private_key_pem}"
-
-  subject {
-    common_name  = "${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}"
-  }
-
-  dns_names  = ["${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}"]
-  validity_period_hours = "${24 * 365 * 10}"
-
-  allowed_uses = [
-    "server_auth"
-  ]
-}
-
-
-
 
 data "ibm_compute_ssh_key" "public_key" {
   count = "${length(var.key_name)}"

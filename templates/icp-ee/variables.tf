@@ -1,9 +1,5 @@
 ##### SoftLayer/IBMCloud Access Credentials ######
 
-# Provide values for these in terraform.tfvars
-variable "sl_username" { description = "IBM Cloud (aka SoftLayer) user name." }
-variable "sl_api_key" { description = "IBM Cloud (aka SoftLayer) API key." }
-
 variable "key_name" {
   description = "Name or reference of SSH key to provision IBM Cloud instances with"
   default = []
@@ -159,8 +155,10 @@ variable "worker" {
     cpu_cores   = "4"
     memory      = "16384"
 
-    disk_size         = "100" // GB
+    disk_size         = "100" // GB, 25 or 100
     docker_vol_size   = "100" // GB
+    additional_disk   = "0"   // GB, if you want an additional block device, set to non-zero
+
     local_disk  = false
 
     network_speed= "1000"
@@ -181,7 +179,7 @@ variable "fs_audit" {
 variable "fs_registry" {
   default = {
     type = "Endurance"
-    size = "50"
+    size = "100"
     hourly_billing = true
     iops = 2
   }
@@ -215,6 +213,14 @@ variable "icppassword" {
 variable "icp_inception_image" {
   description = "ICP image to use for installation"
   default     = "ibmcom/icp-inception-amd64:3.1.0-ee"
+}
+
+variable "cluster_cname" {
+  default = ""
+}
+
+variable "registry_server" {
+  default   = ""
 }
 
 variable "registry_username" {

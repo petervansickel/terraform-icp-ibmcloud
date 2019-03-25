@@ -86,14 +86,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/registry/registry-cert.pem
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
-  - path: /etc/registry/registry-key.pem
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_private_key.registry_key.private_key_pem}")}
 runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
 EOF
@@ -157,10 +149,15 @@ resource "ibm_compute_vm_instance" "icp-master" {
     ibm_security_group.cluster_public.*.id
   ))}"]
 
-  private_security_group_ids = [
-    "${ibm_security_group.cluster_private.id}",
-    "${ibm_security_group.master_group.id}"
-  ]
+  private_security_group_ids = ["${compact(
+    concat(
+      list(
+        ibm_security_group.cluster_private.id,
+        ibm_security_group.master_group.id,
+	var.proxy["nodes"] == 0 ? ibm_security_group.proxy_group.id : ""
+      )
+    )
+  )}"]
 
   tags = [
     "${var.deployment}",
@@ -186,10 +183,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 mounts:
 ${var.master["nodes"] > 1 ? "
   - ['${ibm_storage_file.fs_registry.mountpoint}', /var/lib/registry, nfs, defaults, 0, 0]
@@ -236,6 +229,7 @@ EOF
   # wait until cloud-init finishes
   provisioner "remote-exec" {
     connection {
+      host          = "${self.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
       bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
@@ -306,10 +300,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
@@ -342,6 +332,7 @@ EOF
   # wait until cloud-init finishes
   provisioner "remote-exec" {
     connection {
+      host          = "${self.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
       bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
@@ -409,10 +400,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
@@ -446,6 +433,7 @@ EOF
   # wait until cloud-init finishes
   provisioner "remote-exec" {
     connection {
+      host          = "${self.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
       bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
@@ -513,10 +501,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
@@ -551,6 +535,7 @@ EOF
   # wait until cloud-init finishes
   provisioner "remote-exec" {
     connection {
+      host          = "${self.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
       bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
@@ -590,10 +575,14 @@ resource "ibm_compute_vm_instance" "icp-worker" {
   ]
 
   local_disk = "${var.worker["local_disk"]}"
-  disks = [
-    "${var.worker["disk_size"]}",
-    "${var.worker["docker_vol_size"]}"
-  ]
+  disks = ["${compact(
+    concat(
+      list(
+        var.worker["disk_size"],
+        var.worker["docker_vol_size"],
+        var.worker["additional_disk"] != 0 ? "${var.worker["additional_disk"]}" : "")
+    ))}"]
+
 
   hourly_billing = "${var.worker["hourly_billing"]}"
   tags = [
@@ -620,10 +609,6 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: ${base64encode(file("${path.module}/scripts/bootstrap.sh"))}
-  - path: /etc/docker/certs.d/${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}/ca.crt
-    permissions: '600'
-    encoding: b64
-    content: ${base64encode("${tls_self_signed_cert.registry_cert.cert_pem}")}
 runcmd:
   - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" } -d /dev/xvdc
   - echo '${ibm_compute_vm_instance.icp-boot.ipv4_address_private} ${var.deployment}-boot-${random_id.clusterid.hex}.${var.domain}' >> /etc/hosts
@@ -658,6 +643,7 @@ EOF
   # wait until cloud-init finishes
   provisioner "remote-exec" {
     connection {
+      host          = "${self.ipv4_address_private}"
       user          = "icpdeploy"
       private_key   = "${tls_private_key.installkey.private_key_pem}"
       bastion_host  = "${var.private_network_only ? ibm_compute_vm_instance.icp-boot.ipv4_address_private : ibm_compute_vm_instance.icp-boot.ipv4_address}"
