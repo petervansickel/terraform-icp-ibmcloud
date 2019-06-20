@@ -75,12 +75,25 @@ module "icpprovision" {
     ssh_key_base64  = "${base64encode(tls_private_key.installkey.private_key_pem)}"
     ssh_agent       = false
 
-    # a hack to wait for the api-server listener to come up before we start installing
+    # a hack to wait for the listeners to come up before we start installing
     hooks = {
       "boot-preconfig" = [
-        "echo ${ibm_is_lb_listener.master-8001.id}"
+        "echo ${ibm_is_lb_listener.master-8001.id} > /dev/null",
+        "echo ${ibm_is_lb_listener.master-8443.id} > /dev/null",
+        "echo ${ibm_is_lb_listener.master-8500.id} > /dev/null",
+        "echo ${ibm_is_lb_listener.master-8600.id} > /dev/null",
+        "echo ${ibm_is_lb_listener.master-9443.id} > /dev/null",
+        "echo ${join(",", ibm_is_lb_pool_member.master-8001.*.id)} > /dev/null",
+        "echo ${join(",", ibm_is_lb_pool_member.master-8443.*.id)} > /dev/null",
+        "echo ${join(",", ibm_is_lb_pool_member.master-8500.*.id)} > /dev/null",
+        "echo ${join(",", ibm_is_lb_pool_member.master-8600.*.id)} > /dev/null",
+        "echo ${join(",", ibm_is_lb_pool_member.master-9443.*.id)} > /dev/null",
+        "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
       ]
-      "cluster-preconfig" = ["echo No hook"]
+      # wait for cloud-init to finish on all the nodes before we continue
+      "cluster-preconfig" = [
+        "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
+      ],
       "cluster-postconfig" = ["echo No hook"]
       "preinstall" = ["echo No hook"]
       "postinstall" = ["echo No hook"]
@@ -91,21 +104,6 @@ module "icpprovision" {
     # hooks = {
     #   "boot-preconfig" = [
     #     "while [ ! -f /opt/ibm/.imageload_complete ]; do sleep 5; done"
-    #   ]
-    # }
-
-    ## Alternative approach
-    # hooks = {
-    #   "cluster-preconfig" = ["echo No hook"]
-    #   "cluster-postconfig" = ["echo No hook"]
-    #   "preinstall" = ["echo No hook"]
-    #   "postinstall" = ["echo No hook"]
-    #   "boot-preconfig" = [
-    #     # "${var.image_location == "" ? "exit 0" : "echo Getting archives"}",
-    #     "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done",
-    #     "sudo mv /tmp/load_image.sh /opt/ibm/scripts/",
-    #     "sudo chmod a+x /opt/ibm/scripts/load_image.sh",
-    #     "/opt/ibm/scripts/load_image.sh -p ${var.image_location} -r ${local.registry_server} -c ${local.docker_password}"
     #   ]
     # }
 

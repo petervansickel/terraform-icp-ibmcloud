@@ -167,6 +167,4 @@ else
   crlinux_install
 fi
 
-docker_install
-
 echo "Complete.."

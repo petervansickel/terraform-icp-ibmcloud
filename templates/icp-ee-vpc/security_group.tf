@@ -3,13 +3,19 @@ resource "ibm_is_security_group" "cluster_private" {
   vpc = "${ibm_is_vpc.icp_vpc.id}"
 }
 
-resource "ibm_is_security_group_rule" "allow_ingress_from_self_priv" {
+resource "ibm_is_security_group_rule" "cluster_ingress_from_self" {
   direction = "ingress"
   remote = "${ibm_is_security_group.cluster_private.id}"
   group = "${ibm_is_security_group.cluster_private.id}"
 }
 
-resource "ibm_is_security_group_rule" "allow_ssh_ingress_from_boot_priv" {
+resource "ibm_is_security_group_rule" "cluster_ingress_master" {
+  direction = "ingress"
+  remote = "${ibm_is_security_group.master_node.id}"
+  group = "${ibm_is_security_group.cluster_private.id}"
+}
+
+resource "ibm_is_security_group_rule" "cluster_ingress_ssh_boot" {
   direction = "ingress"
   remote = "${ibm_is_security_group.boot_node.id}"
   group = "${ibm_is_security_group.cluster_private.id}"
@@ -19,7 +25,7 @@ resource "ibm_is_security_group_rule" "allow_ssh_ingress_from_boot_priv" {
   }
 }
 
-resource "ibm_is_security_group_rule" "allow_cluster_egress_private" {
+resource "ibm_is_security_group_rule" "cluster_egress_all" {
   direction = "egress"
   group = "${ibm_is_security_group.cluster_private.id}"
   remote = "0.0.0.0/0"
@@ -30,8 +36,36 @@ resource "ibm_is_security_group" "master_node" {
   vpc = "${ibm_is_vpc.icp_vpc.id}"
 }
 
+resource "ibm_is_security_group_rule" "master_ingress_ssh_boot" {
+  direction = "ingress"
+  remote = "${ibm_is_security_group.boot_node.id}"
+  group = "${ibm_is_security_group.master_node.id}"
+  tcp {
+    port_min = 22
+    port_max = 22
+  }
+}
+
+// TODO i am unsure about allowing all traffic to the master from the cluster, but it doesn't seem 
+// work without it -- particularly in multi-tenant environments i'm uneasy about allowing 
+// access to etcd, so NetworkPolicy should be used in the cluster to limit access to specific
+// ports from specific pods (i.e. calico)
+resource "ibm_is_security_group_rule" "master_ingress_all_cluster" {
+  direction = "ingress"
+  remote = "${ibm_is_security_group.cluster_private.id}"
+  group = "${ibm_is_security_group.master_node.id}"
+}
+
+
+resource "ibm_is_security_group_rule" "master_egress_all" {
+  direction = "egress"
+  group = "${ibm_is_security_group.master_node.id}"
+  remote = "0.0.0.0/0"
+}
+
+
 # restrict incoming on ports to LBaaS private subnet
-resource "ibm_is_security_group_rule" "allow_port_8443" {
+resource "ibm_is_security_group_rule" "master_ingress_port_8443_all" {
   direction = "ingress"
   tcp {
     port_min = 8443
@@ -44,7 +78,7 @@ resource "ibm_is_security_group_rule" "allow_port_8443" {
 }
 
 # restrict to LBaaS private subnet
-resource "ibm_is_security_group_rule" "allow_port_8500" {
+resource "ibm_is_security_group_rule" "master_ingress_port_8500_all" {
   direction = "ingress"
   tcp {
     port_min = 8500
@@ -57,7 +91,7 @@ resource "ibm_is_security_group_rule" "allow_port_8500" {
 }
 
 # restrict to LBaaS private subnet
-resource "ibm_is_security_group_rule" "allow_port_8600" {
+resource "ibm_is_security_group_rule" "master_ingress_port_8600_all" {
   direction = "ingress"
   tcp {
     port_min = 8600
@@ -70,7 +104,7 @@ resource "ibm_is_security_group_rule" "allow_port_8600" {
 }
 
 # TODO restrict to LBaaS private subnet
-resource "ibm_is_security_group_rule" "allow_port_8001" {
+resource "ibm_is_security_group_rule" "master_ingress_port_8001_all" {
   direction = "ingress"
   tcp {
     port_min = 8001
@@ -83,8 +117,8 @@ resource "ibm_is_security_group_rule" "allow_port_8001" {
 }
 
 
-# restrict to LBaaS private subnet
-resource "ibm_is_security_group_rule" "allow_port_9443" {
+# TODO do we still need this rule?
+resource "ibm_is_security_group_rule" "master_ingress_port_9443_all" {
   direction = "ingress"
   tcp {
     port_min = 9443
@@ -97,7 +131,7 @@ resource "ibm_is_security_group_rule" "allow_port_9443" {
 }
 
 # restrict to LBaaS private subnet
-resource "ibm_is_security_group_rule" "allow_port_80" {
+resource "ibm_is_security_group_rule" "proxy_ingress_port_80_all" {
   direction = "ingress"
   tcp {
     port_min = 80
@@ -109,7 +143,7 @@ resource "ibm_is_security_group_rule" "allow_port_80" {
 }
 
 # restrict to LBaaS private subnet
-resource "ibm_is_security_group_rule" "allow_port_443" {
+resource "ibm_is_security_group_rule" "proxy_ingress_port_443_all" {
   direction = "ingress"
   tcp {
     port_min = 443
@@ -131,7 +165,7 @@ resource "ibm_is_security_group" "boot_node" {
 }
 
 # TODO restrict to allowed CIDR
-resource "ibm_is_security_group_rule" "allow_inbound_ssh" {
+resource "ibm_is_security_group_rule" "boot_ingress_ssh_all" {
   group = "${ibm_is_security_group.boot_node.id}"
   direction = "ingress"
   remote = "0.0.0.0/0"
@@ -141,7 +175,7 @@ resource "ibm_is_security_group_rule" "allow_inbound_ssh" {
   }
 }
 
-resource "ibm_is_security_group_rule" "allow_egress" {
+resource "ibm_is_security_group_rule" "boot_egress_all" {
   group = "${ibm_is_security_group.boot_node.id}"
   remote = "0.0.0.0/0"
   direction = "egress"

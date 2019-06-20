@@ -1,4 +1,5 @@
 provider "ibm" {
+  generation = "1"
 }
 
 locals {

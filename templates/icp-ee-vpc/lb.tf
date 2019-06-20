@@ -23,8 +23,8 @@ resource "ibm_is_lb_pool" "proxy-443" {
 resource "ibm_is_lb_listener" "proxy-443" {
   lb = "${ibm_is_lb.proxy.id}"
   protocol = "tcp"
-  port = 443
-  default_pool = "${ibm_is_lb_pool.proxy-443.id}"
+  port = "443"
+  default_pool = "${element(split("/",ibm_is_lb_pool.proxy-443.id),1)}"
 }
 
 resource "ibm_is_lb_pool_member" "proxy-443" {
@@ -50,20 +50,20 @@ resource "ibm_is_lb_pool" "proxy-80" {
   # ensure these are created serially -- LB limitations
   depends_on = [
     "ibm_is_lb_listener.proxy-443",
-    "ibm_is_lb_pool.proxy-443"
+    //"ibm_is_lb_pool.proxy-443"
   ]
 }
 
 resource "ibm_is_lb_listener" "proxy-80" {
   lb = "${ibm_is_lb.proxy.id}"
   protocol = "tcp"
-  port = 80
-  default_pool = "${ibm_is_lb_pool.proxy-80.id}"
+  port = "80"
+  default_pool = "${element(split("/",ibm_is_lb_pool.proxy-80.id),1)}"
 
   # ensure these are created serially -- LB limitations
   depends_on = [
     "ibm_is_lb_listener.proxy-443",
-    "ibm_is_lb_pool.proxy-443"
+    //"ibm_is_lb_pool.proxy-443"
   ]
 }
 
@@ -79,8 +79,8 @@ resource "ibm_is_lb_pool_member" "proxy-80" {
   # ensure these are created serially -- LB limitations
   depends_on = [
     "ibm_is_lb_pool_member.proxy-443",
-    "ibm_is_lb_pool.proxy-443",
-    "ibm_is_lb_listener.proxy-443"
+    //"ibm_is_lb_pool.proxy-443",
+    //"ibm_is_lb_listener.proxy-443"
   ]
 }
 
@@ -103,8 +103,8 @@ resource "ibm_is_lb_pool" "master-8001" {
 resource "ibm_is_lb_listener" "master-8001" {
   protocol = "tcp"
   lb = "${ibm_is_lb.master.id}"
-  port = 8001
-  default_pool = "${ibm_is_lb_pool.master-8001.id}"
+  port = "8001"
+  default_pool = "${element(split("/",ibm_is_lb_pool.master-8001.id),1)}"
 }
 
 resource "ibm_is_lb_pool_member" "master-8001" {
@@ -125,23 +125,25 @@ resource "ibm_is_lb_pool" "master-8443" {
   health_timeout = 30
   health_type = "tcp"
 
+/*
   # ensure these are created serially -- LB limitations
   depends_on = [
     "ibm_is_lb_listener.master-8001",
-    "ibm_is_lb_pool.master-8001"
+    //"ibm_is_lb_pool.master-8001"
   ]
+  */
 }
 
 resource "ibm_is_lb_listener" "master-8443" {
   protocol = "tcp"
   lb = "${ibm_is_lb.master.id}"
-  port = 8443
-  default_pool = "${ibm_is_lb_pool.master-8443.id}"
+  port = "8443"
+  default_pool = "${element(split("/",ibm_is_lb_pool.master-8443.id),1)}"
 
   # ensure these are created serially -- LB limitations
   depends_on = [
     "ibm_is_lb_listener.master-8001",
-    "ibm_is_lb_pool.master-8001"
+    //"ibm_is_lb_pool.master-8001"
   ]
 
 }
@@ -152,6 +154,11 @@ resource "ibm_is_lb_pool_member" "master-8443" {
   pool = "${element(split("/",ibm_is_lb_pool.master-8443.id),1)}"
   port = "8443"
   target_address = "${element(ibm_is_instance.icp-master.*.primary_network_interface.0.primary_ipv4_address, count.index)}"
+
+  # ensure these are created serially -- LB limitations
+  depends_on = [
+    "ibm_is_lb_pool_member.master-8001"
+  ]
 
 }
 
@@ -166,27 +173,29 @@ resource "ibm_is_lb_pool" "master-8500" {
   health_type = "tcp"
 
   # ensure these are created serially -- LB limitations
+  /*
   depends_on = [
     "ibm_is_lb_listener.master-8443",
-    "ibm_is_lb_pool.master-8443",
+    //"ibm_is_lb_pool.master-8443",
     "ibm_is_lb_listener.master-8001",
-    "ibm_is_lb_pool.master-8001"
+    //"ibm_is_lb_pool.master-8001"
   ]
+  */
 
 }
 
 resource "ibm_is_lb_listener" "master-8500" {
   protocol = "tcp"
   lb = "${ibm_is_lb.master.id}"
-  port = 8500
-  default_pool = "${ibm_is_lb_pool.master-8500.id}"
+  port = "8500"
+  default_pool = "${element(split("/",ibm_is_lb_pool.master-8500.id),1)}"
 
   # ensure these are created serially -- LB limitations
   depends_on = [
     "ibm_is_lb_listener.master-8443",
-    "ibm_is_lb_pool.master-8443",
+    //"ibm_is_lb_pool.master-8443",
     "ibm_is_lb_listener.master-8001",
-    "ibm_is_lb_pool.master-8001"
+    //"ibm_is_lb_pool.master-8001"
   ]
 
 
@@ -198,6 +207,13 @@ resource "ibm_is_lb_pool_member" "master-8500" {
   pool = "${element(split("/",ibm_is_lb_pool.master-8500.id),1)}"
   port = "8500"
   target_address = "${element(ibm_is_instance.icp-master.*.primary_network_interface.0.primary_ipv4_address, count.index)}"
+
+  # ensure these are created serially -- LB limitations
+  depends_on = [
+    "ibm_is_lb_pool_member.master-8001",
+    "ibm_is_lb_pool_member.master-8443"
+  ]
+
 }
 
 resource "ibm_is_lb_pool" "master-8600" {
@@ -211,31 +227,33 @@ resource "ibm_is_lb_pool" "master-8600" {
   health_type = "tcp"
 
   # ensure these are created serially -- LB limitations
+  /*
   depends_on = [
     "ibm_is_lb_listener.master-8500",
-    "ibm_is_lb_pool.master-8500",
+    //"ibm_is_lb_pool.master-8500",
     "ibm_is_lb_listener.master-8443",
-    "ibm_is_lb_pool.master-8443",
+    //"ibm_is_lb_pool.master-8443",
     "ibm_is_lb_listener.master-8001",
-    "ibm_is_lb_pool.master-8001"
+    //"ibm_is_lb_pool.master-8001"
   ]
+  */
 
 }
 
 resource "ibm_is_lb_listener" "master-8600" {
   protocol = "tcp"
   lb = "${ibm_is_lb.master.id}"
-  port = 8600
-  default_pool = "${ibm_is_lb_pool.master-8600.id}"
+  port = "8600"
+  default_pool = "${element(split("/",ibm_is_lb_pool.master-8600.id),1)}"
 
   # ensure these are created serially -- LB limitations
   depends_on = [
     "ibm_is_lb_listener.master-8500",
-    "ibm_is_lb_pool.master-8500",
+    //"ibm_is_lb_pool.master-8500",
     "ibm_is_lb_listener.master-8443",
-    "ibm_is_lb_pool.master-8443",
+    //"ibm_is_lb_pool.master-8443",
     "ibm_is_lb_listener.master-8001",
-    "ibm_is_lb_pool.master-8001"
+    //"ibm_is_lb_pool.master-8001"
   ]
 
 }
@@ -246,6 +264,13 @@ resource "ibm_is_lb_pool_member" "master-8600" {
   pool = "${element(split("/",ibm_is_lb_pool.master-8600.id),1)}"
   port = "8600"
   target_address = "${element(ibm_is_instance.icp-master.*.primary_network_interface.0.primary_ipv4_address, count.index)}"
+
+  depends_on = [
+    "ibm_is_lb_pool_member.master-8001",
+    "ibm_is_lb_pool_member.master-8443",
+    "ibm_is_lb_pool_member.master-8500"
+  ]
+
 }
 
 resource "ibm_is_lb_pool" "master-9443" {
@@ -258,36 +283,38 @@ resource "ibm_is_lb_pool" "master-9443" {
   health_timeout = 30
   health_type = "tcp"
 
+  /*
   # ensure these are created serially -- LB limitations
   depends_on = [
     "ibm_is_lb_listener.master-8600",
-    "ibm_is_lb_pool.master-8600",
+    //"ibm_is_lb_pool.master-8600",
     "ibm_is_lb_listener.master-8500",
-    "ibm_is_lb_pool.master-8500",
+    //"ibm_is_lb_pool.master-8500",
     "ibm_is_lb_listener.master-8443",
-    "ibm_is_lb_pool.master-8443",
+    //"ibm_is_lb_pool.master-8443",
     "ibm_is_lb_listener.master-8001",
-    "ibm_is_lb_pool.master-8001"
+    //"ibm_is_lb_pool.master-8001"
   ]
+  */
 
 }
 
 resource "ibm_is_lb_listener" "master-9443" {
   protocol = "tcp"
   lb = "${ibm_is_lb.master.id}"
-  port = 9443
-  default_pool = "${ibm_is_lb_pool.master-9443.id}"
+  port = "9443"
+  default_pool = "${element(split("/",ibm_is_lb_pool.master-9443.id),1)}"
 
   # ensure these are created serially -- LB limitations
   depends_on = [
     "ibm_is_lb_listener.master-8600",
-    "ibm_is_lb_pool.master-8600",
+    //"ibm_is_lb_pool.master-8600",
     "ibm_is_lb_listener.master-8500",
-    "ibm_is_lb_pool.master-8500",
+    //"ibm_is_lb_pool.master-8500",
     "ibm_is_lb_listener.master-8443",
-    "ibm_is_lb_pool.master-8443",
+    //"ibm_is_lb_pool.master-8443",
     "ibm_is_lb_listener.master-8001",
-    "ibm_is_lb_pool.master-8001"
+    //"ibm_is_lb_pool.master-8001"
   ]
 }
 
@@ -297,6 +324,14 @@ resource "ibm_is_lb_pool_member" "master-9443" {
   pool = "${element(split("/",ibm_is_lb_pool.master-9443.id),1)}"
   port = "9443"
   target_address = "${element(ibm_is_instance.icp-master.*.primary_network_interface.0.primary_ipv4_address, count.index)}"
+
+  depends_on = [
+    "ibm_is_lb_pool_member.master-8001",
+    "ibm_is_lb_pool_member.master-8443",
+    "ibm_is_lb_pool_member.master-8500",
+    "ibm_is_lb_pool_member.master-8600"
+  ]
+
 }
 
 
