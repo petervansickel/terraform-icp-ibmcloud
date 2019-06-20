@@ -34,19 +34,12 @@ resource "ibm_is_floating_ip" "icp-boot-pub" {
 ##############################################
 ## Provision boot node
 ##############################################
-#resource "ibm_is_volume" "icp-boot-vol" {
-#  name = "${var.deployment}-boot-${random_id.clusterid.hex}"
-#  profile = "general-purpose"
-#  zone = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
-#  capacity = "${var.boot["disk_size"]}"
-#}
-#
-#resource "ibm_is_volume" "icp-boot-docker-vol" {
-#  name = "${var.deployment}-boot-docker-${random_id.clusterid.hex}"
-#  profile = "general-purpose"
-#  zone = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
-#  capacity = "${var.boot["docker_vol_size"]}"
-#}
+resource "ibm_is_volume" "icp-boot-docker-vol" {
+  name = "${var.deployment}-boot-docker-${random_id.clusterid.hex}"
+  profile = "general-purpose"
+  zone = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
+  capacity = "${var.boot["docker_vol_size"]}"
+}
 
 resource "ibm_is_instance" "icp-boot" {
   name = "${var.deployment}-boot-${random_id.clusterid.hex}"
@@ -58,16 +51,13 @@ resource "ibm_is_instance" "icp-boot" {
   profile = "${data.ibm_is_instance_profile.icp-boot-profile.name}"
 
   primary_network_interface = {
-    port_speed = "${var.boot["network_speed"]}"
     subnet = "${element(ibm_is_subnet.icp_subnet.*.id, 0)}"
-    security_groups = ["${list(ibm_is_security_group.boot_node.id)}"]
   }
 
   image   = "${data.ibm_is_image.osimage.id}"
-#  volumes = [
-#    "${ibm_is_volume.icp-boot-vol.id}",
-#    "${ibm_is_volume.icp-boot-docker-vol.id}"
-#  ]
+  volumes = [
+    "${ibm_is_volume.icp-boot-docker-vol.id}"
+  ]
 
   user_data = <<EOF
 #cloud-config
@@ -84,6 +74,13 @@ users:
   shell: /bin/bash
   ssh-authorized-keys:
   - ${tls_private_key.installkey.public_key_openssh}
+fs_setup:
+- label: None
+  filesystem: 'ext4'
+  device: '/dev/xvdc'
+  partition: 'auto'
+mounts:
+- [ 'xvdc', '/var/lib/docker' ]
 write_files:
 - path: /opt/ibm/scripts/bootstrap.sh
   permissions: '0755'
@@ -94,21 +91,13 @@ runcmd:
 EOF
 }
 
-#resource "ibm_is_volume" "icp-master-vol" {
-#  count    = "${var.master["nodes"]}"
-#  name = "${var.deployment}-master-${random_id.clusterid.hex}"
-#  profile = "general-purpose"
-#  zone = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
-#  capacity = "${var.master["disk_size"]}"
-#}
-#
-#resource "ibm_is_volume" "icp-master-docker-vol" {
-#  count    = "${var.master["nodes"]}"
-#  name     = "${format("%s-master-docker%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"
-#  profile  = "general-purpose"
-#  zone     = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
-#  capacity = "${var.master["docker_vol_size"]}"
-#}
+resource "ibm_is_volume" "icp-master-docker-vol" {
+  count    = "${var.master["nodes"]}"
+  name     = "${format("%s-master-docker%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"
+  profile  = "general-purpose"
+  zone     = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
+  capacity = "${var.master["docker_vol_size"]}"
+}
 
 resource "ibm_is_instance" "icp-master" {
   count = "${var.master["nodes"]}"
@@ -121,17 +110,14 @@ resource "ibm_is_instance" "icp-master" {
   profile = "${data.ibm_is_instance_profile.icp-master-profile.name}"
 
   primary_network_interface = {
-    port_speed = "${var.master["network_speed"]}"
     subnet     = "${element(ibm_is_subnet.icp_subnet.*.id, count.index)}"
-    security_groups = ["${list(ibm_is_security_group.master_node.id, 
-                               ibm_is_security_group.cluster_private.id)}"]
+    security_groups = ["${list(ibm_is_security_group.cluster_private.id)}"]
   }
 
   image   = "${data.ibm_is_image.osimage.id}"
-#  volumes = [
-#    "${element(ibm_is_volume.icp-master-vol.*.id, count.index)}",
-#    "${element(ibm_is_volume.icp-master-docker-vol.*.id, count.index)}"
-#  ]
+  volumes = [
+    "${element(ibm_is_volume.icp-master-docker-vol.*.id, count.index)}"
+  ]
 
   user_data = <<EOF
 #cloud-config
@@ -148,6 +134,13 @@ users:
   shell: /bin/bash
   ssh-authorized-keys:
   - ${tls_private_key.installkey.public_key_openssh}
+fs_setup:
+- label: None
+  filesystem: 'ext4'
+  device: '/dev/xvdc'
+  partition: 'auto'
+mounts:
+- [ 'xvdc', '/var/lib/docker' ]
 write_files:
 - path: /opt/ibm/scripts/bootstrap.sh
   permissions: '0755'
@@ -185,21 +178,13 @@ EOF
   }
 }
 
-#resource "ibm_is_volume" "icp-mgmt-vol" {
-#  count    = "${var.mgmt["nodes"]}"
-#  name = "${var.deployment}-mgmt-${random_id.clusterid.hex}"
-#  profile = "general-purpose"
-#  zone = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
-#  capacity = "${var.mgmt["disk_size"]}"
-#}
-#
-#resource "ibm_is_volume" "icp-mgmt-docker-vol" {
-#  count    = "${var.mgmt["nodes"]}"
-#  name     = "${format("%s-mgmt-docker%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"
-#  profile  = "general-purpose"
-#  zone     = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
-#  capacity = "${var.mgmt["docker_vol_size"]}"
-#}
+resource "ibm_is_volume" "icp-mgmt-docker-vol" {
+  count    = "${var.mgmt["nodes"]}"
+  name     = "${format("%s-mgmt-docker%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"
+  profile  = "general-purpose"
+  zone     = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
+  capacity = "${var.mgmt["docker_vol_size"]}"
+}
 
 resource "ibm_is_instance" "icp-mgmt" {
   count = "${var.mgmt["nodes"]}"
@@ -212,16 +197,13 @@ resource "ibm_is_instance" "icp-mgmt" {
   profile = "${data.ibm_is_instance_profile.icp-mgmt-profile.name}"
 
   primary_network_interface = {
-    port_speed = "${var.mgmt["network_speed"]}"
     subnet     = "${element(ibm_is_subnet.icp_subnet.*.id, count.index)}"
-    security_groups = ["${list(ibm_is_security_group.cluster_private.id)}"]
   }
 
   image   = "${data.ibm_is_image.osimage.id}"
-#  volumes = [
-#    "${element(ibm_is_volume.icp-mgmt-vol.*.id, count.index)}",
-#    "${element(ibm_is_volume.icp-mgmt-docker-vol.*.id, count.index)}"
-#  ]
+  volumes = [
+    "${element(ibm_is_volume.icp-mgmt-docker-vol.*.id, count.index)}"
+  ]
 
   user_data = <<EOF
 #cloud-config
@@ -238,6 +220,13 @@ users:
   shell: /bin/bash
   ssh-authorized-keys:
   - ${tls_private_key.installkey.public_key_openssh}
+fs_setup:
+- label: None
+  filesystem: 'ext4'
+  device: '/dev/xvdc'
+  partition: 'auto'
+mounts:
+- [ 'xvdc', '/var/lib/docker' ]
 write_files:
 - path: /opt/ibm/scripts/bootstrap.sh
   permissions: '0755'
@@ -274,21 +263,13 @@ EOF
   }
 }
 
-#resource "ibm_is_volume" "icp-worker-vol" {
-#  count    = "${var.worker["nodes"]}"
-#  name = "${var.deployment}-worker-${random_id.clusterid.hex}"
-#  profile = "general-purpose"
-#  zone = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
-#  capacity = "${var.worker["disk_size"]}"
-#}
-#
-#resource "ibm_is_volume" "icp-worker-docker-vol" {
-#  count    = "${var.worker["nodes"]}"
-#  name     = "${format("%s-worker-docker%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"
-#  profile  = "general-purpose"
-#  zone     = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
-#  capacity = "${var.worker["docker_vol_size"]}"
-#}
+resource "ibm_is_volume" "icp-worker-docker-vol" {
+  count    = "${var.worker["nodes"]}"
+  name     = "${format("%s-worker-docker%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"
+  profile  = "general-purpose"
+  zone     = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
+  capacity = "${var.worker["docker_vol_size"]}"
+}
 
 resource "ibm_is_instance" "icp-worker" {
   count = "${var.worker["nodes"]}"
@@ -301,16 +282,14 @@ resource "ibm_is_instance" "icp-worker" {
   profile = "${data.ibm_is_instance_profile.icp-worker-profile.name}"
 
   primary_network_interface = {
-    port_speed = "${var.worker["network_speed"]}"
     subnet     = "${element(ibm_is_subnet.icp_subnet.*.id, count.index)}"
     security_groups = ["${list(ibm_is_security_group.cluster_private.id)}"]
   }
 
   image   = "${data.ibm_is_image.osimage.id}"
-#  volumes = [
-#    "${element(ibm_is_volume.icp-worker-vol.*.id, count.index)}",
-#    "${element(ibm_is_volume.icp-worker-docker-vol.*.id, count.index)}"
-#  ]
+  volumes = [
+    "${element(ibm_is_volume.icp-worker-docker-vol.*.id, count.index)}"
+  ]
 
   user_data = <<EOF
 #cloud-config
@@ -327,6 +306,13 @@ users:
   shell: /bin/bash
   ssh-authorized-keys:
   - ${tls_private_key.installkey.public_key_openssh}
+fs_setup:
+- label: None
+  filesystem: 'ext4'
+  device: '/dev/xvdc'
+  partition: 'auto'
+mounts:
+- [ 'xvdc', '/var/lib/docker' ]
 write_files:
 - path: /opt/ibm/scripts/bootstrap.sh
   permissions: '0755'
@@ -362,6 +348,14 @@ EOF
       "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 1; done"
     ]
   }
+}
+
+resource "ibm_is_volume" "icp-proxy-docker-vol" {
+  count    = "${var.proxy["nodes"]}"
+  name     = "${format("%s-proxy-docker%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"
+  profile  = "general-purpose"
+  zone     = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
+  capacity = "${var.proxy["docker_vol_size"]}"
 }
 
 resource "ibm_is_instance" "icp-proxy" {
@@ -375,17 +369,14 @@ resource "ibm_is_instance" "icp-proxy" {
   profile = "${data.ibm_is_instance_profile.icp-proxy-profile.name}"
 
   primary_network_interface = {
-    port_speed = "${var.proxy["network_speed"]}"
     subnet     = "${element(ibm_is_subnet.icp_subnet.*.id, count.index)}"
-    security_groups = ["${list(ibm_is_security_group.proxy_node.id, 
-                               ibm_is_security_group.cluster_private.id)}"]
+    security_groups = ["${list(ibm_is_security_group.cluster_private.id)}"]
   }
 
   image   = "${data.ibm_is_image.osimage.id}"
-#  volumes = [
-#    "${element(ibm_is_volume.icp-proxy-vol.*.id, count.index)}",
-#    "${element(ibm_is_volume.icp-proxy-docker-vol.*.id, count.index)}"
-#  ]
+  volumes = [
+    "${element(ibm_is_volume.icp-proxy-docker-vol.*.id, count.index)}"
+  ]
 
   user_data = <<EOF
 #cloud-config
@@ -402,6 +393,13 @@ users:
   shell: /bin/bash
   ssh-authorized-keys:
   - ${tls_private_key.installkey.public_key_openssh}
+fs_setup:
+- label: None
+  filesystem: 'ext4'
+  device: '/dev/xvdc'
+  partition: 'auto'
+mounts:
+- [ 'xvdc', '/var/lib/docker' ]
 write_files:
 - path: /opt/ibm/scripts/bootstrap.sh
   permissions: '0755'
@@ -438,21 +436,14 @@ EOF
     ]
   }
 }
-#resource "ibm_is_volume" "icp-va-vol" {
-#  count    = "${var.va["nodes"]}"
-#  name = "${var.deployment}-va-${random_id.clusterid.hex}"
-#  profile = "general-purpose"
-#  zone = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
-#  capacity = "${var.va["disk_size"]}"
-#}
-#
-#resource "ibm_is_volume" "icp-va-docker-vol" {
-#  count    = "${var.va["nodes"]}"
-#  name     = "${format("%s-va-docker%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"
-#  profile  = "general-purpose"
-#  zone     = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
-#  capacity = "${var.va["docker_vol_size"]}"
-#}
+
+resource "ibm_is_volume" "icp-va-docker-vol" {
+  count    = "${var.va["nodes"]}"
+  name     = "${format("%s-va-docker%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"
+  profile  = "general-purpose"
+  zone     = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
+  capacity = "${var.va["docker_vol_size"]}"
+}
 
 
 
@@ -467,16 +458,14 @@ resource "ibm_is_instance" "icp-va" {
   profile = "${data.ibm_is_instance_profile.icp-va-profile.name}"
 
   primary_network_interface = {
-    port_speed = "${var.va["network_speed"]}"
     subnet     = "${element(ibm_is_subnet.icp_subnet.*.id, count.index)}"
     security_groups = ["${list(ibm_is_security_group.cluster_private.id)}"]
   }
 
   image   = "${data.ibm_is_image.osimage.id}"
-#  volumes = [
-#    "${element(ibm_is_volume.icp-va-vol.*.id, count.index)}",
-#    "${element(ibm_is_volume.icp-va-docker-vol.*.id, count.index)}"
-#  ]
+  volumes = [
+    "${element(ibm_is_volume.icp-va-docker-vol.*.id, count.index)}"
+  ]
 
   user_data = <<EOF
 #cloud-config
@@ -493,6 +482,13 @@ users:
   shell: /bin/bash
   ssh-authorized-keys:
   - ${tls_private_key.installkey.public_key_openssh}
+fs_setup:
+- label: None
+  filesystem: 'ext4'
+  device: '/dev/xvdc'
+  partition: 'auto'
+mounts:
+- [ 'xvdc', '/var/lib/docker' ]
 write_files:
 - path: /opt/ibm/scripts/bootstrap.sh
   permissions: '0755'

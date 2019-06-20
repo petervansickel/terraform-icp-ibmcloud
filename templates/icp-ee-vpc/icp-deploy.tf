@@ -75,10 +75,14 @@ module "icpprovision" {
     ssh_key_base64  = "${base64encode(tls_private_key.installkey.private_key_pem)}"
     ssh_agent       = false
 
-    # a hack to wait for the api-server listener to come up before we start installing
+    # a hack to wait for the listeners to come up before we start installing
     hooks = {
       "boot-preconfig" = [
-        "echo ${ibm_is_lb_listener.master-8001.id}"
+        "echo ${ibm_is_lb_listener.master-8001.id} > /dev/null",
+        "echo ${ibm_is_lb_listener.master-8443.id} > /dev/null",
+        "echo ${ibm_is_lb_listener.master-8500.id} > /dev/null",
+        "echo ${ibm_is_lb_listener.master-8600.id} > /dev/null",
+        "echo ${ibm_is_lb_listener.master-9443.id} > /dev/null",
       ]
       "cluster-preconfig" = ["echo No hook"]
       "cluster-postconfig" = ["echo No hook"]

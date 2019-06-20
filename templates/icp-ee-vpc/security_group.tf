@@ -30,6 +30,12 @@ resource "ibm_is_security_group" "master_node" {
   vpc = "${ibm_is_vpc.icp_vpc.id}"
 }
 
+resource "ibm_is_security_group_network_interface_attachment" "master" {
+  count = "${var.master["nodes"]}"
+  security_group    = "${ibm_is_security_group.master_node.id}"
+  network_interface = "${element(ibm_is_instance.icp-master.*.primary_network_interface.0.id, count.index)}"
+}
+
 # restrict incoming on ports to LBaaS private subnet
 resource "ibm_is_security_group_rule" "allow_port_8443" {
   direction = "ingress"
@@ -125,9 +131,22 @@ resource "ibm_is_security_group" "proxy_node" {
   vpc = "${ibm_is_vpc.icp_vpc.id}"
 }
 
+resource "ibm_is_security_group_network_interface_attachment" "proxy" {
+  count = "${var.proxy["nodes"] > 0 ? var.proxy["nodes"] : var.master["nodes"]}"
+  security_group    = "${ibm_is_security_group.proxy_node.id}"
+  network_interface = "${var.proxy["nodes"] > 0 ? 
+    element(ibm_is_instance.icp-proxy.*.primary_network_interface.0.id, count.index) :
+    element(ibm_is_instance.icp-master.*.primary_network_interface.0.id, count.index)}"
+}
+
 resource "ibm_is_security_group" "boot_node" {
   name = "${var.deployment}-boot-${random_id.clusterid.hex}"
   vpc = "${ibm_is_vpc.icp_vpc.id}"
+}
+
+resource "ibm_is_security_group_network_interface_attachment" "boot" {
+  security_group    = "${ibm_is_security_group.boot_node.id}"
+  network_interface = "${ibm_is_instance.icp-boot.primary_network_interface.0.id}"
 }
 
 # TODO restrict to allowed CIDR
