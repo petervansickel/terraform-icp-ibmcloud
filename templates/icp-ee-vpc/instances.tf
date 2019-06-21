@@ -280,14 +280,6 @@ resource "ibm_is_volume" "icp-proxy-docker-vol" {
   capacity = "${var.proxy["docker_vol_size"]}"
 }
 
-resource "ibm_is_volume" "icp-proxy-docker-vol" {
-  count    = "${var.proxy["nodes"]}"
-  name     = "${format("%s-proxy-docker%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"
-  profile  = "general-purpose"
-  zone     = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
-  capacity = "${var.proxy["docker_vol_size"]}"
-}
-
 resource "ibm_is_instance" "icp-proxy" {
   count = "${var.proxy["nodes"]}"
   name  = "${format("%s-proxy%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"

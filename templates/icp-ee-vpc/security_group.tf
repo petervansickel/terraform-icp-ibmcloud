@@ -36,7 +36,6 @@ resource "ibm_is_security_group" "master_node" {
   vpc = "${ibm_is_vpc.icp_vpc.id}"
 }
 
-<<<<<<< HEAD
 resource "ibm_is_security_group_rule" "master_ingress_ssh_boot" {
   direction = "ingress"
   remote = "${ibm_is_security_group.boot_node.id}"
@@ -65,14 +64,6 @@ resource "ibm_is_security_group_rule" "master_egress_all" {
 }
 
 
-=======
-resource "ibm_is_security_group_network_interface_attachment" "master" {
-  count = "${var.master["nodes"]}"
-  security_group    = "${ibm_is_security_group.master_node.id}"
-  network_interface = "${element(ibm_is_instance.icp-master.*.primary_network_interface.0.id, count.index)}"
-}
-
->>>>>>> ad39bb647e2cf459e57303906ac2f1e55f9c9fd5
 # restrict incoming on ports to LBaaS private subnet
 resource "ibm_is_security_group_rule" "master_ingress_port_8443_all" {
   direction = "ingress"
