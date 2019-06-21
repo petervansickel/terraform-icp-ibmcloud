@@ -52,7 +52,6 @@ resource "ibm_is_instance" "icp-boot" {
 
   primary_network_interface = {
     subnet = "${element(ibm_is_subnet.icp_subnet.*.id, 0)}"
-    security_groups = ["${list(ibm_is_security_group.boot_node.id)}"]
   }
 
   image   = "${data.ibm_is_image.osimage.id}"
@@ -173,7 +172,6 @@ resource "ibm_is_instance" "icp-mgmt" {
 
   primary_network_interface = {
     subnet     = "${element(ibm_is_subnet.icp_subnet.*.id, count.index)}"
-    security_groups = ["${list(ibm_is_security_group.cluster_private.id)}"]
   }
 
   image   = "${data.ibm_is_image.osimage.id}"
@@ -272,6 +270,14 @@ runcmd:
 - /opt/ibm/scripts/bootstrap.sh -u icpdeploy ${local.docker_package_uri != "" ? "-p ${local.docker_package_uri}" : "" }
 EOF
 
+}
+
+resource "ibm_is_volume" "icp-proxy-docker-vol" {
+  count    = "${var.proxy["nodes"]}"
+  name     = "${format("%s-proxy-docker%02d-%s", var.deployment, count.index + 1, random_id.clusterid.hex)}"
+  profile  = "general-purpose"
+  zone     = "${element(data.ibm_is_zone.icp_zone.*.name, count.index)}"
+  capacity = "${var.proxy["docker_vol_size"]}"
 }
 
 resource "ibm_is_volume" "icp-proxy-docker-vol" {
